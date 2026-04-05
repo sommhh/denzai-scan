@@ -1,1 +1,0 @@
-# denzai-scan

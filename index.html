@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電材スキャンPRO</title>
+
+<style>
+body{margin:0;background:#111;color:#fff;font-family:sans-serif;text-align:center;}
+button{width:90%;padding:15px;margin:8px;font-size:16px;border-radius:10px;border:none;background:#00c853;color:#fff;}
+input{width:90%;padding:10px;margin:5px;border-radius:8px;border:none;}
+a{display:block;background:#2962ff;margin:5px;padding:10px;border-radius:8px;color:#fff;text-decoration:none;}
+video{width:100%;max-height:40vh;}
+</style>
+</head>
+
+<body>
+
+<h2>📷 電材スキャンPRO</h2>
+
+<input id="siteName" placeholder="現場名（例：○○邸）">
+
+<button onclick="startCamera()">カメラ起動</button>
+<button onclick="capture()">スキャン</button>
+<button onclick="shareLast()">LINEで送る</button>
+
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas" style="display:none;"></canvas>
+
+<p id="result"></p>
+<div id="history"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<script>
+// DB初期化
+let db;
+const request = indexedDB.open("scanDB",1);
+
+request.onupgradeneeded = e=>{
+  db = e.target.result;
+  db.createObjectStore("records",{keyPath:"id",autoIncrement:true});
+};
+
+request.onsuccess = e=>{
+  db = e.target.result;
+  loadHistory();
+};
+
+let stream;
+let lastData=null;
+
+// カメラ
+async function startCamera(){
+  stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+  video.srcObject = stream;
+}
+
+// スキャン
+async function capture(){
+  const canvas=document.getElementById("canvas");
+  const ctx=canvas.getContext("2d");
+
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  ctx.drawImage(video,0,0);
+
+  const {data:{text}} = await Tesseract.recognize(canvas,'eng+jpn');
+
+  let product=text.replace(/\s/g,'').replace(/O/g,"0").replace(/I/g,"1").trim();
+  let site=document.getElementById("siteName").value || "未設定";
+
+  document.getElementById("result").innerText="品番: "+product;
+
+  const data={
+    product,
+    site,
+    date:new Date().toLocaleString(),
+    image:canvas.toDataURL()
+  };
+
+  lastData=data;
+  saveData(data);
+}
+
+// 保存
+function saveData(data){
+  const tx=db.transaction("records","readwrite");
+  const store=tx.objectStore("records");
+  store.add(data);
+  tx.oncomplete=loadHistory;
+}
+
+// 履歴表示
+function loadHistory(){
+  const tx=db.transaction("records","readonly");
+  const store=tx.objectStore("records");
+  const req=store.getAll();
+
+  req.onsuccess=()=>{
+    let html="";
+    req.result.reverse().forEach(r=>{
+      html+=`
+      <div style="border:1px solid #444;margin:5px;padding:5px;">
+        <div>${r.site}</div>
+        <div>${r.product}</div>
+        <div>${r.date}</div>
+        <img src="${r.image}" style="width:100px">
+      </div>`;
+    });
+    document.getElementById("history").innerHTML=html;
+  }
+}
+
+// LINE送信（共有）
+async function shareLast(){
+  if(!lastData) return alert("データなし");
+
+  const text = `${lastData.site}\n品番:${lastData.product}\n${lastData.date}`;
+
+  if(navigator.share){
+    await navigator.share({
+      title:"電材情報",
+      text:text
+    });
+  }else{
+    alert("共有未対応");
+  }
+}
+</script>
+
+</body>
+</html>
