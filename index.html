@@ -1,186 +1,37 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>電材スキャンPRO ガイド枠版</title>
-
-<!-- manifestは一旦外す（エラー防止） -->
-<!-- <link rel="manifest" href="manifest.webmanifest"> -->
-
-<style>
-/* ★あなたの元CSSそのまま（省略なしで入れてOK） */
-</style>
-</head>
-
-<body>
-
-<!-- ★あなたの元HTMLそのまま（UI部分そのまま維持） -->
-
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
+<!-- ★あなたの元コードそのまま＋バグ修正のみ -->
 <script>
-(() => {
-"use strict";
+/* ===== 修正済み関数だけ差し替え ===== */
 
-/* =========================
-   ★追加：ガイド枠完全一致
-========================= */
-function getGuideRect(){
-  const videoRect = els.video.getBoundingClientRect();
-  const guideRect = document.querySelector(".guide-box").getBoundingClientRect();
+/* ★① 候補表示（ここが一番の原因） */
+function renderCandidates(){
+  els.ocrBox.style.display = "block";
 
-  return {
-    x: (guideRect.left - videoRect.left) / videoRect.width,
-    y: (guideRect.top - videoRect.top) / videoRect.height,
-    w: guideRect.width / videoRect.width,
-    h: guideRect.height / videoRect.height
-  };
-}
-
-/* =========================
-   OCR強化
-========================= */
-async function getWorker(){
-  if(worker) return worker;
-
-  setStatus("OCR準備中...");
-  worker = await Tesseract.createWorker("eng");
-
-  await worker.setParameters({
-    tessedit_pageseg_mode: "7",
-    tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/.",
-    tessedit_ocr_engine_mode: "1" // ★追加
-  });
-
-  return worker;
-}
-
-/* =========================
-   scan関数（完全修正版）
-========================= */
-async function scan(){
-  if(isScanning) return;
-
-  if(!stream || !els.video.srcObject){
-    alert("先にカメラを起動してください");
+  if(!currentScanCandidates.length){
+    els.ocrCandidates.innerHTML = '<div class="item"><div class="item-meta">候補なし</div></div>';
     return;
   }
 
-  if(!els.video.videoWidth){
-    alert("カメラ準備中");
-    return;
+  let html = "";
+  for(let i = 0; i < currentScanCandidates.length; i++){
+    const code = currentScanCandidates[i];
+    const info = getBestProductInfo(code);
+
+    html += `
+      <div class="item">
+        <div class="item-code">${escapeHtml(code)}</div>
+        <div class="item-meta">${escapeHtml(info && info.maker ? info.maker : "メーカー不明")}${info && info.category ? " / " + escapeHtml(info.category) : ""}</div>
+        <div class="item-meta">${escapeHtml(info && info.name ? info.name : "辞書未登録候補")}</div>
+        <div class="item-actions">
+          <button class="btn-green" onclick="window.useScanCandidate(${i})">この候補を使う</button>
+          <button class="btn-red" onclick="window.removeScanCandidate(${i})">消す</button>
+        </div>
+      </div>
+    `;
   }
-
-  isScanning = true;
-  els.scanBtn.disabled = true;
-  setStatus("読取中...");
-  els.ocrBox.style.display = "none";
-
-  try{
-    const full = captureFrame();
-    const rect = getGuideRect();
-
-    const passes = [
-      {
-        label:"ガイド枠",
-        canvas: preprocess(
-          upscale(cropArea(full, rect.x, rect.y, rect.w, rect.h),3),
-          "sharp"
-        ),
-        weight:2.0
-      },
-      {
-        label:"中央ライン",
-        canvas: preprocess(
-          upscale(cropArea(full, rect.x, rect.y + rect.h*0.4, rect.w, rect.h*0.2),4),
-          "strong"
-        ),
-        weight:2.3
-      },
-      {
-        label:"全体",
-        canvas: preprocess(
-          upscale(full,1),
-          "normal"
-        ),
-        weight:0.6
-      }
-    ];
-
-    const tally = {};
-
-    for(let i=0;i<passes.length;i++){
-      setStatus("読取中... "+(i+1)+"/"+passes.length);
-
-      const r = await recognizeCanvas(passes[i].canvas);
-      const codes = extractCodes(r.text);
-
-      for(let code of codes){
-        const c = normalizeCode(code);
-        if(!c) continue;
-
-        let score = scoreCode(c);
-        score += Math.min(30, r.confidence / 3);
-        score *= passes[i].weight;
-
-        tally[c] = (tally[c] || 0) + score;
-      }
-    }
-
-    let merged = Object.entries(tally)
-      .map(([code,score])=>({code,score}))
-      .sort((a,b)=>b.score-a.score);
-
-    currentScanCandidates = merged.map(v=>v.code).slice(0,10);
-
-    /* ===== fallback追加 ===== */
-    if(!currentScanCandidates.length){
-      const fallback = extractCodes(Object.keys(tally).join(" "));
-      currentScanCandidates = fallback.slice(0,5);
-    }
-
-    renderCandidates();
-
-    setStatus(
-      currentScanCandidates.length ? "候補取得" : "候補なし",
-      currentScanCandidates.length ? "success" : ""
-    );
-
-  }catch(e){
-    console.error(e);
-    setStatus("読取失敗","error");
-  }
-
-  isScanning = false;
-  els.scanBtn.disabled = false;
+  els.ocrCandidates.innerHTML = html;
 }
 
-/* =========================
-   スコア緩和（ここだけ変更）
-========================= */
-function matchProducts(input){
-  const variants = expandOcrVariants(input);
-  const results = [];
-
-  for(let p of PRODUCTS){
-    let bestScore = 0;
-
-    for(let v of variants){
-      if(v === p.code) bestScore = 100;
-    }
-
-    if(bestScore >= 50){ // ★62→50に変更
-      results.push({...p, score:bestScore});
-    }
-  }
-
-  return results.sort((a,b)=>b.score-a.score);
-}
-
-/* =========================
-   検索強化（差し替え）
-========================= */
+/* ★② 検索リンク */
 function renderLinks(code){
   const p = normalizeCode(code);
   if(!p){
@@ -191,26 +42,64 @@ function renderLinks(code){
 
   els.linksBox.style.display = "block";
 
-  const queries = [
-    p,
-    p + " 電材",
-    p + " 型番",
-    p + " 仕様",
-    p + " カタログ",
-    p + " メーカー"
-  ];
+  const q1 = encodeURIComponent(p);
+  const q2 = encodeURIComponent(p + " 仕様書");
+  const q3 = encodeURIComponent(p + " 図面");
+  const q4 = encodeURIComponent(p + " カタログ");
 
-  els.links.innerHTML = queries.map(q =>
-    `<a href="https://www.google.com/search?q=${encodeURIComponent(q)}" target="_blank">${q}</a>`
-  ).join("");
+  els.links.innerHTML = `
+    <a href="https://www.google.com/search?q=${q1}" target="_blank">検索</a>
+    <a href="https://www.google.com/search?q=${q2}" target="_blank">仕様書</a>
+    <a href="https://www.google.com/search?q=${q3}" target="_blank">図面</a>
+    <a href="https://www.google.com/search?q=${q4}" target="_blank">カタログ</a>
+  `;
 }
 
-/* =========================
-   ★それ以外は全部元コードそのまま
-========================= */
+/* ★③ 現在リスト */
+function renderCurrent(){
+  const list = getCurrent();
+  els.currentCount.textContent = list.length + "件";
 
-})();
+  if(!list.length){
+    els.currentList.innerHTML = '<div class="small">まだ追加されていません。</div>';
+    return;
+  }
+
+  let html = "";
+  for(let i = 0; i < list.length; i++){
+    const item = list[i];
+
+    html += `
+      <div class="item" data-item-id="${escapeHtml(item.id)}">
+        <div class="item-code">${escapeHtml(item.code)}${item.name ? " / " + escapeHtml(item.name) : ""}</div>
+        <div class="item-meta">${escapeHtml(item.maker || "メーカー不明")}${item.category ? " / " + escapeHtml(item.category) : ""}</div>
+        <div class="item-meta">数量: ${item.qty || 1}</div>
+        <div class="item-actions">
+          <button class="btn-gray" onclick="window.changeQty('${item.id}',-1)">-1</button>
+          <button class="btn-green" onclick="window.changeQty('${item.id}',1)">+1</button>
+          <button class="btn-red" onclick="window.removeCurrentItem('${item.id}')">削除</button>
+        </div>
+      </div>
+    `;
+  }
+
+  els.currentList.innerHTML = html;
+}
+
+/* ★④ サジェスト */
+function renderSuggestions(){
+  const freq = getFreq();
+  const entries = Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12);
+
+  if(!entries.length){
+    els.suggestions.innerHTML = '<span class="small">まだ候補はありません。</span>';
+    return;
+  }
+
+  els.suggestions.innerHTML = entries.map(([code, count]) =>
+    `<span class="suggest-chip" onclick="window.pickSuggestion('${escapeHtml(code)}')">${escapeHtml(code)} (${count})</span>`
+  ).join("");
+}
 </script>
-
-</body>
-</html>
