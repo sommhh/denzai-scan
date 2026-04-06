@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>電材スキャンPRO 改良版</title>
+<title>電材スキャンPRO ガイド枠版</title>
 <meta name="theme-color" content="#101418">
 <link rel="manifest" href="manifest.webmanifest">
 <style>
@@ -19,6 +19,8 @@
   --line:#06c755;
   --gray:#546e7a;
   --border:#31414d;
+  --guide:#69f0ae;
+  --guideBg:rgba(105,240,174,.08);
 }
 *{box-sizing:border-box}
 body{
@@ -97,13 +99,53 @@ button:disabled{
 .btn-red{background:var(--red)}
 .btn-line{background:var(--line)}
 .btn-gray{background:var(--gray)}
+.camera-wrap{
+  position:relative;
+  width:100%;
+  margin-top:10px;
+}
 video{
   width:100%;
-  max-height:52vh;
+  max-height:56vh;
   background:#000;
   border-radius:12px;
-  margin-top:10px;
   object-fit:cover;
+  display:block;
+}
+.guide-box{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:78%;
+  height:18%;
+  transform:translate(-50%,-50%);
+  border:3px solid var(--guide);
+  border-radius:14px;
+  background:var(--guideBg);
+  box-shadow:0 0 0 9999px rgba(0,0,0,.18) inset;
+  pointer-events:none;
+}
+.guide-box::before{
+  content:"品番をこの枠に合わせる";
+  position:absolute;
+  top:-30px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.65);
+  color:#fff;
+  font-size:12px;
+  padding:4px 10px;
+  border-radius:999px;
+  white-space:nowrap;
+}
+.guide-line{
+  position:absolute;
+  left:8%;
+  right:8%;
+  top:50%;
+  height:2px;
+  background:rgba(105,240,174,.9);
+  transform:translateY(-50%);
 }
 .small{
   font-size:12px;
@@ -205,6 +247,10 @@ video{
 .mt10{margin-top:10px}
 @media (max-width:640px){
   .links{grid-template-columns:1fr}
+  .guide-box{
+    width:84%;
+    height:16%;
+  }
 }
 @media print{
   body{background:#fff;color:#000}
@@ -220,7 +266,7 @@ video{
 </head>
 <body>
 <div class="wrap">
-  <h1>電材スキャンPRO 改良版</h1>
+  <h1>電材スキャンPRO ガイド枠版</h1>
 
   <div class="card no-print">
     <div class="title">読取・入力</div>
@@ -240,9 +286,15 @@ video{
       <div class="col"><button class="btn-gray" id="stopBtn">停止</button></div>
     </div>
 
-    <div class="small mt8">外部 products.json があれば自動読込します。なくても内蔵辞書で動作します。</div>
+    <div class="small mt8">品番ラベルを中央の緑枠に合わせてスキャンしてください。メーカー不明でも候補表示します。</div>
 
-    <video id="video" autoplay playsinline muted></video>
+    <div class="camera-wrap">
+      <video id="video" autoplay playsinline muted></video>
+      <div class="guide-box">
+        <div class="guide-line"></div>
+      </div>
+    </div>
+
     <div class="status" id="status"></div>
 
     <div id="ocrBox" class="mt10" style="display:none;">
@@ -308,66 +360,16 @@ video{
 
   let PRODUCTS = [
     { code:"WTF1502WK", name:"コスモシリーズワイド21 埋込ダブルコンセント", maker:"Panasonic", category:"配線器具", aliases:["WTF1502","WTFI502WK","WTF-1502WK"] },
-    { code:"WTF1502FK", name:"コスモシリーズワイド21 埋込ダブルコンセント", maker:"Panasonic", category:"配線器具", aliases:["WTF1502F","WTF-1502FK"] },
-    { code:"WTF1502HK", name:"コスモシリーズワイド21 埋込ダブルコンセント", maker:"Panasonic", category:"配線器具", aliases:["WTF1502H","WTF-1502HK"] },
-    { code:"WTF1502GK", name:"コスモシリーズワイド21 埋込ダブルコンセント", maker:"Panasonic", category:"配線器具", aliases:["WTF1502G","WTF-1502GK"] },
     { code:"WT50519", name:"コスモシリーズワイド21 埋込ほたるスイッチB", maker:"Panasonic", category:"配線器具", aliases:["WT5051","WT5O519","WT-50519"] },
-    { code:"WT50529", name:"コスモシリーズワイド21 埋込ほたるスイッチC", maker:"Panasonic", category:"配線器具", aliases:["WT5052","WT-50529"] },
-    { code:"WT50539", name:"コスモシリーズワイド21 埋込ほたるトリプルスイッチ", maker:"Panasonic", category:"配線器具", aliases:["WT5053","WT-50539"] },
     { code:"WTA5051", name:"アドバンスシリーズ スイッチ", maker:"Panasonic", category:"配線器具", aliases:["WTA5O51","WTA-5051"] },
-    { code:"WTA5052", name:"アドバンスシリーズ スイッチ", maker:"Panasonic", category:"配線器具", aliases:["WTA-5052"] },
-    { code:"WTA5053", name:"アドバンスシリーズ スイッチ", maker:"Panasonic", category:"配線器具", aliases:["WTA-5053"] },
-    { code:"WTA3700K", name:"アドバンスシリーズ プレート", maker:"Panasonic", category:"プレート", aliases:["WTA37O0K","WTA-3700K"] },
-    { code:"WTA7101WK", name:"アドバンスシリーズ スイッチプレート 1連用", maker:"Panasonic", category:"プレート", aliases:["WTA7101","WTA-7101WK"] },
-    { code:"WTA7102WK", name:"アドバンスシリーズ スイッチプレート 2連用", maker:"Panasonic", category:"プレート", aliases:["WTA7102","WTA-7102WK"] },
-    { code:"WTA7103WK", name:"アドバンスシリーズ スイッチプレート 3連用", maker:"Panasonic", category:"プレート", aliases:["WTA7103","WTA-7103WK"] },
     { code:"WN5001", name:"埋込コンセント", maker:"Panasonic", category:"配線器具", aliases:["WN5OO1","WN-5001"] },
-    { code:"WN5002", name:"埋込ダブルコンセント", maker:"Panasonic", category:"配線器具", aliases:["WN-5002"] },
-    { code:"WN5003", name:"埋込トリプルコンセント", maker:"Panasonic", category:"配線器具", aliases:["WN-5003"] },
-    { code:"WN6001W", name:"モダンプレート 1コ用", maker:"Panasonic", category:"プレート", aliases:["WN6OO1W","WN-6001W"] },
-    { code:"WN6002W", name:"モダンプレート 2コ用", maker:"Panasonic", category:"プレート", aliases:["WN-6002W"] },
-    { code:"WN6003W", name:"モダンプレート 3コ用", maker:"Panasonic", category:"プレート", aliases:["WN-6003W"] },
-    { code:"WK3001W", name:"防雨スイッチ", maker:"Panasonic", category:"配線器具", aliases:["WK3OO1W","WK-3001W"] },
-    { code:"WK3002W", name:"防雨ダブルスイッチ", maker:"Panasonic", category:"配線器具", aliases:["WK-3002W"] },
-    { code:"WK4102K", name:"防雨コンセント", maker:"Panasonic", category:"配線器具", aliases:["WK41O2K","WK-4102K"] },
-    { code:"WK4105K", name:"防雨接地コンセント", maker:"Panasonic", category:"配線器具", aliases:["WK-4105K"] },
-    { code:"WTC7101W", name:"コスモシリーズワイド21 スイッチプレート 1連用", maker:"Panasonic", category:"プレート", aliases:["WTC7101","WTC-7101W"] },
-    { code:"WTC7102W", name:"コスモシリーズワイド21 スイッチプレート 2連用", maker:"Panasonic", category:"プレート", aliases:["WTC7102","WTC-7102W"] },
-    { code:"WTC7103W", name:"コスモシリーズワイド21 スイッチプレート 3連用", maker:"Panasonic", category:"プレート", aliases:["WTC7103","WTC-7103W"] },
-    { code:"WTC7301W", name:"コスモシリーズワイド21 ラウンドプレート 1連用", maker:"Panasonic", category:"プレート", aliases:["WTC7301","WTC-7301W"] },
-    { code:"WTC7302W", name:"コスモシリーズワイド21 ラウンドプレート 2連用", maker:"Panasonic", category:"プレート", aliases:["WTC7302","WTC-7302W"] },
-    { code:"WTC7303W", name:"コスモシリーズワイド21 ラウンドプレート 3連用", maker:"Panasonic", category:"プレート", aliases:["WTC7303","WTC-7303W"] },
-    { code:"WTF7001W", name:"コスモシリーズワイド21 コンセントプレート 1コ用", maker:"Panasonic", category:"プレート", aliases:["WTF7001","WTF-7001W"] },
-    { code:"WTF7002W", name:"コスモシリーズワイド21 コンセントプレート 2コ用", maker:"Panasonic", category:"プレート", aliases:["WTF7002","WTF-7002W"] },
-    { code:"WTF7003W", name:"コスモシリーズワイド21 コンセントプレート 3コ用", maker:"Panasonic", category:"プレート", aliases:["WTF7003","WTF-7003W"] },
-    { code:"WTF3710K", name:"絶縁取付枠", maker:"Panasonic", category:"取付枠", aliases:["WTF-3710K"] },
-    { code:"WTF3710FK", name:"絶縁取付枠", maker:"Panasonic", category:"取付枠", aliases:["WTF-3710FK"] },
-    { code:"WTF3710HK", name:"絶縁取付枠", maker:"Panasonic", category:"取付枠", aliases:["WTF-3710HK"] },
-    { code:"WTF3710GK", name:"絶縁取付枠", maker:"Panasonic", category:"取付枠", aliases:["WTF-3710GK"] },
-
-    { code:"PF-16", name:"PF管 16", maker:"未来工業", category:"配管部材", aliases:["PF16","PF-I6","PF 16"] },
-    { code:"PF-22", name:"PF管 22", maker:"未来工業", category:"配管部材", aliases:["PF22","PF-2Z","PF 22"] },
-    { code:"VE-16", name:"VE管 16", maker:"未来工業", category:"配管部材", aliases:["VE16","VE-I6","VE 16"] },
-    { code:"VE-22", name:"VE管 22", maker:"未来工業", category:"配管部材", aliases:["VE22","VE-2Z","VE 22"] },
-    { code:"MFS-16", name:"モール付属品 16", maker:"未来工業", category:"モール部材", aliases:["MFS16","MFS-I6","MFS 16"] },
-    { code:"MFS-22", name:"モール付属品 22", maker:"未来工業", category:"モール部材", aliases:["MFS22","MFS-2Z","MFS 22"] },
-    { code:"PVP-28J", name:"プールボックス", maker:"未来工業", category:"配管部材", aliases:["PVP28J","PVP-28J","PVP 28J"] },
-    { code:"PVK-BNJ", name:"ボックス", maker:"未来工業", category:"ボックス", aliases:["PVKBNJ","PVK-BN-J"] },
-    { code:"SB", name:"スライドボックス", maker:"未来工業", category:"ボックス", aliases:["SLIDEBOX","スライドBOX"] },
-
-    { code:"NKSERIES", name:"NKシリーズ", maker:"JIMBO", category:"配線器具", aliases:["NK","JIMBO NK","神保 NK"] },
-    { code:"JEC-BN-55", name:"配線器具", maker:"JIMBO", category:"配線器具", aliases:["JECBN55","JEC-BN55"] },
-    { code:"NKW01008", name:"スイッチ", maker:"JIMBO", category:"配線器具", aliases:["NKW-01008","NKWO1008"] },
-
-    { code:"B-1EA", name:"安全ブレーカ", maker:"テンパール", category:"ブレーカ", aliases:["B1EA","B-IEA"] },
-    { code:"GB-1ZA", name:"漏電遮断器", maker:"テンパール", category:"ブレーカ", aliases:["GB1ZA","GB-IZA"] },
-    { code:"MAG310182", name:"住宅分電盤", maker:"テンパール", category:"分電盤", aliases:["MAG-310182","MAG3I0I82"] }
+    { code:"WK4102K", name:"防雨コンセント", maker:"Panasonic", category:"配線器具", aliases:["WK41O2K","WK-4102K"] }
   ];
 
   const STORAGE_KEYS = {
-    current: "denzai_current_stable_v4",
-    history: "denzai_history_stable_v4",
-    freq: "denzai_freq_stable_v4"
+    current: "denzai_current_guide_v1",
+    history: "denzai_history_guide_v1",
+    freq: "denzai_freq_guide_v1"
   };
 
   const $ = id => document.getElementById(id);
@@ -449,6 +451,7 @@ video{
     return String(str || "")
       .toUpperCase()
       .replace(/[　\s]+/g, "")
+      .replace(/[()（）$$$$【】]/g, "")
       .replace(/[^A-Z0-9\-_/.\u30FC]/g, "");
   }
 
@@ -471,37 +474,66 @@ video{
   function scoreCode(code){
     let s = 0;
     if(code.length >= 4) s += 2;
-    if(code.length >= 6) s += 3;
+    if(code.length >= 5) s += 3;
+    if(code.length >= 6) s += 4;
     if(/[A-Z]/.test(code)) s += 4;
     if(/\d/.test(code)) s += 4;
-    if(/[A-Z].*\d|\d.*[A-Z]/.test(code)) s += 4;
+    if(/[A-Z].*\d|\d.*[A-Z]/.test(code)) s += 6;
     if(/[-/.]/.test(code)) s += 2;
     if(/^[A-Z0-9\-/.]+$/.test(code)) s += 3;
-    if(/^[0-9]+$/.test(code)) s -= 5;
-    if(code.length > 24) s -= 3;
+    if(/^[0-9]+$/.test(code)) s -= 7;
+    if(code.length <= 2) s -= 10;
+    if(code.length > 24) s -= 4;
     return s;
   }
 
   function extractCodes(text){
-    const raw = (String(text || "").toUpperCase().match(/[A-Z0-9][A-Z0-9\-/.]{2,24}/g) || []);
-    const cleaned = raw
+    const src = String(text || "").toUpperCase();
+    const patterns = [
+      /[A-Z0-9][A-Z0-9\-/.]{2,24}/g,
+      /[A-Z]{1,6}\-?[0-9]{2,10}[A-Z0-9\-]{0,8}/g,
+      /[0-9]{2,10}[A-Z]{1,6}[A-Z0-9\-]{0,8}/g
+    ];
+
+    const found = [];
+    for(let i = 0; i < patterns.length; i++){
+      const m = src.match(patterns[i]) || [];
+      for(let j = 0; j < m.length; j++){
+        found.push(m[j]);
+      }
+    }
+
+    const cleaned = found
       .map(v => v.replace(/^[\-/.]+|[\-/.]+$/g, ""))
+      .map(v => normalizeCode(v))
       .filter(v => v.length >= 3);
+
     return Array.from(new Set(cleaned)).sort((a, b) => scoreCode(b) - scoreCode(a));
   }
 
-  function fixCommonOcrErrors(code){
+  function expandOcrVariants(code){
     const p = normalizeCode(code);
-    const arr = [
-      p,
-      p.replace(/I/g, "1"),
-      p.replace(/O/g, "0"),
-      p.replace(/S/g, "5"),
-      p.replace(/B/g, "8"),
-      p.replace(/Z/g, "2"),
-      p.replace(/Q/g, "0")
+    const set = new Set([p]);
+
+    const pairs = [
+      ["I","1"], ["1","I"],
+      ["O","0"], ["0","O"],
+      ["S","5"], ["5","S"],
+      ["B","8"], ["8","B"],
+      ["Z","2"], ["2","Z"],
+      ["Q","0"], ["D","0"]
     ];
-    return arr.filter((v, i, a) => v && a.indexOf(v) === i);
+
+    for(let i = 0; i < pairs.length; i++){
+      const a = pairs[i][0];
+      const b = pairs[i][1];
+      if(p.indexOf(a) >= 0) set.add(p.replace(new RegExp(a, "g"), b));
+    }
+
+    set.add(p.replace(/-/g, ""));
+    set.add(p.replace(/\./g, ""));
+    set.add(p.replace(/\//g, ""));
+    return Array.from(set).filter(Boolean);
   }
 
   function levenshtein(a, b){
@@ -529,7 +561,7 @@ video{
   }
 
   function matchProducts(input){
-    const variants = fixCommonOcrErrors(input);
+    const variants = expandOcrVariants(input);
     const results = [];
 
     for(let i = 0; i < PRODUCTS.length; i++){
@@ -550,7 +582,7 @@ video{
           const dist = levenshtein(looseV, looseCode);
           const maxLen = Math.max(looseV.length, looseCode.length) || 1;
           const sim = Math.round((1 - dist / maxLen) * 100);
-          if(sim >= 60) bestScore = Math.max(bestScore, sim);
+          if(sim >= 62) bestScore = Math.max(bestScore, sim);
         }
 
         if(Array.isArray(p.aliases)){
@@ -563,7 +595,7 @@ video{
         }
       }
 
-      if(bestScore >= 60){
+      if(bestScore >= 62){
         results.push({
           code: p.code,
           name: p.name,
@@ -580,45 +612,7 @@ video{
   function getBestProductInfo(code){
     const matches = matchProducts(code);
     if(matches.length) return matches[0];
-
-    for(let i = 0; i < PRODUCTS.length; i++){
-      if(normalizeCode(PRODUCTS[i].code) === normalizeCode(code)) return PRODUCTS[i];
-    }
     return null;
-  }
-
-  async function loadExternalProducts(){
-    try{
-      const res = await fetch("products.json", { cache: "no-store" });
-      if(!res.ok) return false;
-
-      const data = await res.json();
-      if(!Array.isArray(data)) return false;
-
-      const map = new Map();
-
-      for(let i = 0; i < PRODUCTS.length; i++){
-        const p = PRODUCTS[i];
-        map.set(normalizeCode(p.code), p);
-      }
-
-      for(let i = 0; i < data.length; i++){
-        const p = data[i];
-        if(!p || !p.code) continue;
-        map.set(normalizeCode(p.code), {
-          code: p.code,
-          name: p.name || "",
-          maker: p.maker || "",
-          category: p.category || "",
-          aliases: Array.isArray(p.aliases) ? p.aliases : []
-        });
-      }
-
-      PRODUCTS = Array.from(map.values());
-      return true;
-    }catch(e){
-      return false;
-    }
   }
 
   async function getWorker(){
@@ -869,18 +863,19 @@ video{
 
     for(let i = 0; i < d.length; i += 4){
       let g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+
       if(mode === "strong"){
-        g = (g - 128) * 2.4 + 128;
+        g = (g - 128) * 2.5 + 128;
       }else if(mode === "sharp"){
-        g = (g - 128) * 2.0 + 128;
+        g = (g - 128) * 2.15 + 128;
       }else{
-        g = (g - 128) * 1.8 + 128;
+        g = (g - 128) * 1.9 + 128;
       }
+
       g = Math.max(0, Math.min(255, g));
       d[i] = d[i + 1] = d[i + 2] = g;
     }
 
-    // 簡易ノイズ除去
     for(let y = 1; y < h - 1; y++){
       for(let x = 1; x < w - 1; x++){
         const idx = (y * w + x) * 4;
@@ -894,15 +889,14 @@ video{
       }
     }
 
-    // 簡易シャープ寄り二値化
     for(let i = 0; i < d.length; i += 4){
       let g = d[i];
       if(mode === "strong"){
-        g = g > 145 ? 255 : g < 95 ? 0 : g;
+        g = g > 142 ? 255 : g < 92 ? 0 : g;
       }else if(mode === "sharp"){
-        g = g > 150 ? 255 : g < 105 ? 0 : g;
+        g = g > 148 ? 255 : g < 102 ? 0 : g;
       }else{
-        g = g > 155 ? 255 : g < 110 ? 0 : g;
+        g = g > 154 ? 255 : g < 108 ? 0 : g;
       }
       d[i] = d[i + 1] = d[i + 2] = g;
     }
@@ -918,6 +912,54 @@ video{
       text: ret && ret.data && ret.data.text ? ret.data.text : "",
       confidence: ret && ret.data && typeof ret.data.confidence === "number" ? ret.data.confidence : 0
     };
+  }
+
+  function chooseRepresentativeCode(group){
+    const sorted = group.slice().sort((a, b) => {
+      const sa = scoreCode(a);
+      const sb = scoreCode(b);
+      if(sb !== sa) return sb - sa;
+      return b.length - a.length;
+    });
+    return sorted[0];
+  }
+
+  function mergeSimilarCandidates(codesWithScore){
+    const groups = [];
+
+    for(let i = 0; i < codesWithScore.length; i++){
+      const code = codesWithScore[i].code;
+      const score = codesWithScore[i].score;
+      const loose = normalizeLoose(code);
+      let placed = false;
+
+      for(let g = 0; g < groups.length; g++){
+        const rep = normalizeLoose(groups[g].rep);
+        const dist = levenshtein(loose, rep);
+        const maxLen = Math.max(loose.length, rep.length) || 1;
+        const sim = 1 - dist / maxLen;
+
+        if(loose === rep || sim >= 0.82 || loose.indexOf(rep) >= 0 || rep.indexOf(loose) >= 0){
+          groups[g].items.push(code);
+          groups[g].score += score;
+          groups[g].rep = chooseRepresentativeCode(groups[g].items);
+          placed = true;
+          break;
+        }
+      }
+
+      if(!placed){
+        groups.push({
+          rep: code,
+          items: [code],
+          score: score
+        });
+      }
+    }
+
+    return groups
+      .map(g => ({ code: g.rep, score: g.score }))
+      .sort((a, b) => b.score - a.score);
   }
 
   async function scan(){
@@ -942,11 +984,11 @@ video{
       const full = captureFrame();
 
       const passes = [
-        { label:"中央", canvas: preprocess(upscale(cropArea(full, 0.11, 0.38, 0.78, 0.24), 2), "normal"), weight:1.15 },
-        { label:"上",   canvas: preprocess(upscale(cropArea(full, 0.11, 0.22, 0.78, 0.24), 2), "strong"), weight:1.00 },
-        { label:"下",   canvas: preprocess(upscale(cropArea(full, 0.11, 0.54, 0.78, 0.24), 2), "strong"), weight:1.00 },
-        { label:"全体", canvas: preprocess(upscale(cropArea(full, 0.00, 0.00, 1.00, 1.00), 1), "sharp"), weight:0.85 },
-        { label:"中央細帯", canvas: preprocess(upscale(cropArea(full, 0.12, 0.43, 0.76, 0.14), 3), "sharp"), weight:1.25 }
+        { label:"ガイド枠全体", canvas: preprocess(upscale(cropArea(full, 0.11, 0.41, 0.78, 0.18), 3), "normal"), weight:1.55 },
+        { label:"ガイド枠細帯", canvas: preprocess(upscale(cropArea(full, 0.12, 0.46, 0.76, 0.08), 4), "sharp"), weight:1.85 },
+        { label:"ガイド枠上寄り", canvas: preprocess(upscale(cropArea(full, 0.11, 0.39, 0.78, 0.12), 3), "strong"), weight:1.20 },
+        { label:"ガイド枠下寄り", canvas: preprocess(upscale(cropArea(full, 0.11, 0.48, 0.78, 0.12), 3), "strong"), weight:1.20 },
+        { label:"補助全体", canvas: preprocess(upscale(cropArea(full, 0.00, 0.00, 1.00, 1.00), 1), "sharp"), weight:0.55 }
       ];
 
       const tally = {};
@@ -962,23 +1004,24 @@ video{
 
           let weight = 0;
           weight += scoreCode(code);
-          weight += Math.max(0, Math.min(24, r.confidence / 4));
+          weight += Math.max(0, Math.min(28, r.confidence / 3.5));
           weight *= passes[i].weight;
 
           const matched = matchProducts(code);
           if(matched.length){
-            weight += 18;
-            weight += matched[0].score / 8;
+            weight += 10;
+            weight += matched[0].score / 10;
           }
 
           tally[code] = (tally[code] || 0) + weight;
         }
       }
 
-      currentScanCandidates = Object.entries(tally)
-        .sort((a, b) => b[1] - a[1])
-        .map(v => v[0])
-        .slice(0, 8);
+      const merged = mergeSimilarCandidates(
+        Object.entries(tally).map(([code, score]) => ({ code, score }))
+      );
+
+      currentScanCandidates = merged.map(v => v.code).slice(0, 10);
 
       renderCandidates();
       setStatus(currentScanCandidates.length ? "候補を取得しました" : "候補なし", currentScanCandidates.length ? "success" : undefined);
@@ -986,7 +1029,7 @@ video{
     }catch(e){
       console.error(e);
       setStatus("読取失敗", "error");
-      alert("読み取りに失敗しました。明るい場所で、品番を中央に大きく写して再度お試しください。");
+      alert("読み取りに失敗しました。品番を緑枠の中央線に合わせて、少し近づけて再度お試しください。");
     }finally{
       isScanning = false;
       els.scanBtn.disabled = false;
@@ -1005,15 +1048,12 @@ video{
     for(let i = 0; i < currentScanCandidates.length; i++){
       const code = currentScanCandidates[i];
       const info = getBestProductInfo(code);
-      const maker = info && info.maker ? info.maker : "";
-      const name = info && info.name ? info.name : "";
-      const category = info && info.category ? info.category : "";
 
       html += `
         <div class="item">
           <div class="item-code">${escapeHtml(code)}</div>
-          <div class="item-meta">${escapeHtml(maker)}${maker && category ? " / " : ""}${escapeHtml(category)}</div>
-          <div class="item-meta">${escapeHtml(name)}</div>
+          <div class="item-meta">${escapeHtml(info && info.maker ? info.maker : "メーカー不明")}${info && info.category ? " / " + escapeHtml(info.category) : ""}</div>
+          <div class="item-meta">${escapeHtml(info && info.name ? info.name : "辞書未登録候補")}</div>
           <div class="item-actions">
             <button class="btn-green" onclick="window.useScanCandidate(${i})">この候補を使う</button>
             <button class="btn-red" onclick="window.removeScanCandidate(${i})">消す</button>
@@ -1036,13 +1076,13 @@ video{
     const q1 = encodeURIComponent(p);
     const q2 = encodeURIComponent(p + " 仕様書");
     const q3 = encodeURIComponent(p + " 図面");
-    const q4 = encodeURIComponent(p + " Panasonic 未来工業 JIMBO テンパール");
+    const q4 = encodeURIComponent(p + " カタログ");
 
     els.links.innerHTML = `
       <a href="https://www.google.com/search?q=${q1}" target="_blank" rel="noopener">検索</a>
       <a href="https://www.google.com/search?q=${q2}" target="_blank" rel="noopener">仕様書</a>
       <a href="https://www.google.com/search?q=${q3}" target="_blank" rel="noopener">図面</a>
-      <a href="https://www.google.com/search?q=${q4}" target="_blank" rel="noopener">メーカー検索</a>
+      <a href="https://www.google.com/search?q=${q4}" target="_blank" rel="noopener">カタログ</a>
     `;
   }
 
@@ -1252,7 +1292,7 @@ video{
       html += `
         <div class="item" data-item-id="${escapeHtml(item.id)}">
           <div class="item-code">${escapeHtml(item.code)}${item.name ? " / " + escapeHtml(item.name) : ""}</div>
-          <div class="item-meta">${escapeHtml(item.maker || "")}${item.category ? " / " + escapeHtml(item.category) : ""}</div>
+          <div class="item-meta">${escapeHtml(item.maker || "メーカー不明")}${item.category ? " / " + escapeHtml(item.category) : ""}</div>
           <div class="item-meta">数量: ${item.qty || 1} / 追加: ${formatDate(item.createdAt)}</div>
           <div class="item-actions no-print">
             <button class="btn-gray" onclick="window.changeQty('${item.id}',-1)">-1</button>
@@ -1455,15 +1495,6 @@ video{
     els.remarks.addEventListener("input", buildOrderText);
   }
 
-  async function registerServiceWorker(){
-    if("serviceWorker" in navigator){
-      try{
-        await navigator.serviceWorker.register("./sw.js");
-      }catch(e){
-      }
-    }
-  }
-
   window.useScanCandidate = useScanCandidate;
   window.removeScanCandidate = removeScanCandidate;
   window.changeQty = updateQty;
@@ -1485,7 +1516,7 @@ video{
     els.manual.value = "";
   };
 
-  async function init(){
+  function init(){
     bindEvents();
     cleanupHistory();
     renderCurrent();
@@ -1493,13 +1524,10 @@ video{
     renderSuggestions();
     buildOrderText();
 
-    const loaded = await loadExternalProducts();
-    await registerServiceWorker();
-
     if(!isSecureContextLike()){
       setStatus("準備完了 / カメラはHTTPSまたはlocalhostで利用してください");
     }else{
-      setStatus("準備完了 / 辞書 " + PRODUCTS.length + "件" + (loaded ? " / 外部JSON読込OK" : ""));
+      setStatus("準備完了 / ガイド枠に合わせてスキャンしてください");
     }
   }
 
