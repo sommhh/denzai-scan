@@ -1,828 +1,149 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>電材スキャンPRO</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電材スキャンPRO 神版</title>
+
+<link rel="manifest" href="manifest.json">
 
 <style>
-  :root{
-    --bg:#101418;
-    --card:#1b2229;
-    --line:#2e3a45;
-    --text:#f5f7fa;
-    --sub:#a7b3bf;
-    --ok:#00c853;
-    --blue:#2962ff;
-    --orange:#ff9800;
-    --danger:#ff5252;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    background:var(--bg);
-    color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
-    text-align:center;
-  }
-  .wrap{
-    max-width:840px;
-    margin:0 auto;
-    padding:16px 12px 28px;
-  }
-  h2{
-    margin:8px 0 14px;
-    font-size:28px;
-  }
-  .sub{
-    color:var(--sub);
-    font-size:13px;
-    margin-bottom:12px;
-  }
-  .card{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:12px;
-    margin:10px 0;
-  }
-  input{
-    width:100%;
-    padding:13px 12px;
-    margin:6px 0;
-    border-radius:10px;
-    border:1px solid var(--line);
-    background:#0f1419;
-    color:#fff;
-    font-size:16px;
-  }
-  button, .linkbtn{
-    width:100%;
-    padding:14px 12px;
-    margin:6px 0;
-    font-size:16px;
-    border-radius:12px;
-    border:none;
-    background:var(--ok);
-    color:#fff;
-    cursor:pointer;
-    text-decoration:none;
-    display:block;
-  }
-  button.secondary{background:var(--blue)}
-  button.orange{background:var(--orange)}
-  button.dark{background:#455a64}
-  button.danger{background:var(--danger)}
-  button:disabled{opacity:.6;cursor:not-allowed}
-
-  .video-wrap{
-    position:relative;
-    border-radius:16px;
-    overflow:hidden;
-    background:#000;
-    border:1px solid var(--line);
-  }
-  video{
-    width:100%;
-    max-height:48vh;
-    background:#000;
-  }
-  .guide{
-    position:absolute;
-    left:50%;
-    top:50%;
-    width:78%;
-    height:26%;
-    transform:translate(-50%,-50%);
-    border:3px solid rgba(0,200,83,.95);
-    border-radius:14px;
-    box-shadow:0 0 0 9999px rgba(0,0,0,.22);
-    pointer-events:none;
-  }
-  .guide-label{
-    position:absolute;
-    left:50%;
-    top:calc(50% - 18%);
-    transform:translateX(-50%);
-    background:rgba(0,0,0,.6);
-    padding:6px 10px;
-    font-size:12px;
-    border-radius:999px;
-    pointer-events:none;
-  }
-  #status{
-    margin:10px 0;
-    font-size:14px;
-    color:#80d8ff;
-    min-height:1.5em;
-    word-break:break-word;
-  }
-  #result{
-    text-align:left;
-  }
-  .result-main{
-    font-size:18px;
-    font-weight:700;
-    margin-bottom:6px;
-  }
-  .muted{
-    color:var(--sub);
-    font-size:13px;
-  }
-  .links{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px;
-    margin-top:10px;
-  }
-  .links a{
-    background:var(--blue);
-    color:#fff;
-    text-decoration:none;
-    border-radius:10px;
-    padding:11px 8px;
-    font-size:14px;
-    display:block;
-  }
-  .history-card{
-    border:1px solid var(--line);
-    border-radius:12px;
-    margin:10px 0;
-    padding:10px;
-    text-align:left;
-    background:#141b21;
-  }
-  .history-card img{
-    width:100%;
-    max-width:180px;
-    border-radius:8px;
-    margin-top:8px;
-    border:1px solid #33424f;
-  }
-  .history-meta{
-    font-size:13px;
-    color:var(--sub);
-    margin:4px 0;
-  }
-  .history-actions{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px;
-    margin-top:8px;
-  }
-  .small-btn{
-    width:100%;
-    padding:10px;
-    border-radius:10px;
-    border:none;
-    background:#345;
-    color:#fff;
-    cursor:pointer;
-    font-size:14px;
-  }
-  canvas{display:none}
-  @media (max-width:560px){
-    .links{grid-template-columns:1fr}
-    .history-actions{grid-template-columns:1fr}
-  }
+body{margin:0;background:#101418;color:#fff;font-family:sans-serif}
+.wrap{max-width:900px;margin:auto;padding:10px}
+.card{background:#1b2229;padding:10px;border-radius:12px;margin:10px 0}
+button{padding:12px;border:none;border-radius:10px;color:#fff;font-weight:bold}
+.btn{background:#2962ff}
+.btn2{background:#00c853}
+video{width:100%;border-radius:10px;background:#000}
+.item{background:#24303a;padding:8px;margin:6px 0;border-radius:10px}
 </style>
 </head>
+
 <body>
 <div class="wrap">
-  <h2>📷 電材スキャンPRO</h2>
-  <div class="sub">品番をスキャン → 説明書 / 仕様書 / 配線図 / 寸法図をすぐ検索</div>
 
-  <div class="card">
-    <input id="siteName" placeholder="現場名（例：○○邸 / ○○ビル 3F）" />
-    <input id="manualInput" placeholder="品番を手入力して検索もできます（例：WTK1811WK）" />
-    <input id="historySearch" placeholder="履歴検索（現場名・品番）" />
-  </div>
+<h2>電材スキャンPRO 神版</h2>
 
-  <div class="card">
-    <button onclick="startCamera()">カメラ起動</button>
-    <button class="secondary" onclick="capture()">スキャン</button>
-    <button class="orange" onclick="searchManualByInput()">手入力で検索</button>
-    <button class="dark" onclick="shareLast()">共有 / LINEで送る</button>
-    <button class="danger" onclick="stopCamera()">カメラ停止</button>
-  </div>
+<div class="card">
+<input id="manual" placeholder="品番入力">
+<button class="btn2" onclick="addManual()">追加</button>
 
-  <div class="video-wrap">
-    <video id="video" autoplay playsinline muted></video>
-    <div class="guide"></div>
-    <div class="guide-label">この枠に品番を合わせると精度UP</div>
-  </div>
+<button class="btn" onclick="startCamera()">カメラ</button>
+<button class="btn" onclick="scan()">スキャン</button>
 
-  <canvas id="canvas"></canvas>
-  <div id="status"></div>
+<video id="video" autoplay playsinline></video>
+<div id="status"></div>
+</div>
 
-  <div class="card" id="result"></div>
-  <div class="card" id="searchLinks"></div>
+<div class="card">
+<h3>リスト</h3>
+<div id="list"></div>
+</div>
 
-  <div class="card">
-    <h3 style="margin-top:0">履歴</h3>
-    <div id="history"></div>
-  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
 <script>
-  const video = document.getElementById("video");
-  const canvas = document.getElementById("canvas");
-  const manualInput = document.getElementById("manualInput");
-  const siteNameInput = document.getElementById("siteName");
-  const historySearchInput = document.getElementById("historySearch");
-  const resultEl = document.getElementById("result");
-  const searchLinksEl = document.getElementById("searchLinks");
-  const historyEl = document.getElementById("history");
+let PRODUCTS=[];
+let worker=null;
+let stream=null;
+let list=[];
 
-  let db = null;
-  let stream = null;
-  let lastData = null;
-  let ocrWorker = null;
-  let isScanning = false;
-
-  // -------------------------
-  // 共通
-  // -------------------------
-  function setStatus(msg, isError = false){
-    const el = document.getElementById("status");
-    el.textContent = msg || "";
-    el.style.color = isError ? "#ff8a80" : "#80d8ff";
+async function loadDB(){
+  try{
+    const res=await fetch("products.json");
+    PRODUCTS=await res.json();
+  }catch(e){
+    PRODUCTS=[{code:"WTF1502WK",name:"コンセント"}];
   }
+}
 
-  function escapeHtml(str = ""){
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+function normalize(s){
+  return s.toUpperCase().replace(/[^A-Z0-9]/g,"");
+}
+
+function match(code){
+  code=normalize(code);
+  return PRODUCTS.find(p=>normalize(p.code)===code);
+}
+
+async function startCamera(){
+  stream=await navigator.mediaDevices.getUserMedia({video:true});
+  video.srcObject=stream;
+}
+
+function capture(){
+  const c=document.createElement("canvas");
+  c.width=video.videoWidth;
+  c.height=video.videoHeight;
+  c.getContext("2d").drawImage(video,0,0);
+  return c;
+}
+
+function preprocess(c){
+  const ctx=c.getContext("2d");
+  let img=ctx.getImageData(0,0,c.width,c.height);
+  for(let i=0;i<img.data.length;i+=4){
+    let g=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
+    g=g>140?255:0;
+    img.data[i]=img.data[i+1]=img.data[i+2]=g;
   }
+  ctx.putImageData(img,0,0);
+  return c;
+}
 
-  function unique(arr){
-    return [...new Set(arr.filter(Boolean))];
+async function getWorker(){
+  if(worker)return worker;
+  worker=await Tesseract.createWorker("eng");
+  return worker;
+}
+
+async function scan(){
+  status.innerText="読取中...";
+  const c=preprocess(capture());
+  const w=await getWorker();
+  const r=await w.recognize(c);
+  let txt=r.data.text;
+  let codes=txt.match(/[A-Z0-9\-]{3,}/g)||[];
+  if(codes.length){
+    addItem(codes[0]);
   }
-
-  function normalizeText(text = ""){
-    return text
-      .toUpperCase()
-      .replace(/[‐‑‒–—―ーｰ]/g, "-")
-      .replace(/[／＼]/g, "/")
-      .replace(/[．。]/g, ".")
-      .replace(/[^\w\-/.]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function buildVariants(token){
-    const base = token.replace(/[^A-Z0-9\-/.]/g, "");
-    if (!base) return [];
-    const variants = new Set([base]);
-
-    // OCR誤認識の救済
-    if (/\d/.test(base)) {
-      variants.add(base.replace(/O/g, "0"));
-      variants.add(base.replace(/[IL]/g, "1"));
-      variants.add(base.replace(/S/g, "5"));
-      variants.add(base.replace(/B/g, "8"));
-      variants.add(base.replace(/O/g, "0").replace(/[IL]/g, "1"));
-    }
-    return [...variants];
-  }
-
-  function scoreCode(code){
-    let s = 0;
-    if (code.length >= 5) s += 2;
-    if (code.length >= 8) s += 2;
-    if (/[A-Z]/.test(code)) s += 3;
-    if (/\d/.test(code)) s += 3;
-    if (/[-/.]/.test(code)) s += 2;
-    if (/^[A-Z0-9][A-Z0-9\-/.]+$/.test(code)) s += 2;
-    if (/^[0-9]+$/.test(code)) s -= 1; // 純数字だけは少し下げる
-    if (code.length > 25) s -= 3;
-    return s;
-  }
-
-  function extractCandidates(text){
-    const normalized = normalizeText(text);
-    const matched = normalized.match(/[A-Z0-9][A-Z0-9\-/.]{3,24}/g) || [];
-    return unique(
-      matched.flatMap(buildVariants)
-        .filter(v => v.length >= 4)
-    ).sort((a,b) => scoreCode(b) - scoreCode(a));
-  }
-
-  function pickBestProduct(texts){
-    const all = unique(texts.flatMap(extractCandidates));
-    return all.sort((a,b) => scoreCode(b) - scoreCode(a))[0] || "";
-  }
-
-  function dataUrlToFile(dataUrl, fileName){
-    const arr = dataUrl.split(",");
-    const mime = arr[0].match(/:(.*?);/)[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while(n--){
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new File([u8arr], fileName, { type: mime });
-  }
-
-  // -------------------------
-  // IndexedDB
-  // -------------------------
-  function initDB(){
-    const request = indexedDB.open("scanDB", 2);
-
-    request.onupgradeneeded = (e) => {
-      db = e.target.result;
-      if (!db.objectStoreNames.contains("records")) {
-        const store = db.createObjectStore("records", { keyPath:"id", autoIncrement:true });
-        store.createIndex("product", "product", { unique:false });
-        store.createIndex("site", "site", { unique:false });
-        store.createIndex("ts", "ts", { unique:false });
-      }
-    };
-
-    request.onsuccess = (e) => {
-      db = e.target.result;
-      loadHistory();
-    };
-
-    request.onerror = () => {
-      setStatus("履歴DBの初期化に失敗しました", true);
-    };
-  }
-
-  function saveData(data){
-    if (!db || !data.product) return;
-    const tx = db.transaction("records", "readwrite");
-    const store = tx.objectStore("records");
-    store.add(data);
-    tx.oncomplete = loadHistory;
-    tx.onerror = () => setStatus("履歴保存に失敗しました", true);
-  }
-
-  function setCurrentProduct(product, site = ""){
-    manualInput.value = product || "";
-    if (site) siteNameInput.value = site;
-    renderSearchLinks(product || "");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function loadHistory(){
-    if (!db) return;
-
-    const tx = db.transaction("records", "readonly");
-    const store = tx.objectStore("records");
-    const req = store.getAll();
-
-    req.onsuccess = () => {
-      const q = (historySearchInput.value || "").trim().toUpperCase();
-
-      const rows = req.result
-        .slice()
-        .reverse()
-        .filter(r => {
-          if (!q) return true;
-          const text = `${r.site || ""} ${r.product || ""}`.toUpperCase();
-          return text.includes(q);
-        });
-
-      if (!rows.length){
-        historyEl.innerHTML = `<div class="muted">履歴はまだありません</div>`;
-        return;
-      }
-
-      historyEl.innerHTML = rows.map(r => `
-        <div class="history-card">
-          <div><strong>現場:</strong> ${escapeHtml(r.site || "未設定")}</div>
-          <div><strong>品番:</strong> ${escapeHtml(r.product || "-")}</div>
-          <div class="history-meta">${escapeHtml(r.date || "")}</div>
-          ${r.image ? `<img src="${r.image}" alt="scan image">` : ""}
-          <div class="history-actions">
-            <button class="small-btn reuse-btn"
-              data-product="${escapeHtml(r.product || "")}"
-              data-site="${escapeHtml(r.site || "")}">
-              この品番で検索
-            </button>
-            <button class="small-btn copy-btn"
-              data-product="${escapeHtml(r.product || "")}">
-              品番をコピー
-            </button>
-          </div>
-        </div>
-      `).join("");
-
-      document.querySelectorAll(".reuse-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          setCurrentProduct(btn.dataset.product, btn.dataset.site);
-        });
-      });
-
-      document.querySelectorAll(".copy-btn").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          try{
-            await navigator.clipboard.writeText(btn.dataset.product || "");
-            setStatus("品番をコピーしました");
-          }catch(e){
-            setStatus("コピーに失敗しました", true);
-          }
-        });
-      });
-    };
-  }
-
-  // -------------------------
-  // カメラ
-  // -------------------------
-  async function startCamera(){
-    try{
-      stopCamera();
-
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        },
-        audio: false
-      });
-
-      video.srcObject = stream;
-      await video.play();
-
-      const track = stream.getVideoTracks()[0];
-      if (track && track.getCapabilities) {
-        const caps = track.getCapabilities();
-        if (caps.focusMode && caps.focusMode.includes("continuous")) {
-          try{
-            await track.applyConstraints({ advanced:[{ focusMode:"continuous" }] });
-          }catch(_e){}
-        }
-      }
-
-      setStatus("カメラを起動しました");
-    }catch(err){
-      console.error(err);
-      setStatus("カメラ起動に失敗しました。HTTPS配信か、カメラ権限を確認してください。", true);
-    }
-  }
-
-  function stopCamera(){
-    if (stream){
-      stream.getTracks().forEach(t => t.stop());
-      stream = null;
-    }
-    video.srcObject = null;
-    setStatus("カメラ停止");
-  }
-
-  function captureGuideArea(){
-    if (!video.videoWidth || !video.videoHeight) {
-      throw new Error("カメラ映像がまだ準備できていません");
-    }
-
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-    const cropW = Math.floor(vw * 0.78);
-    const cropH = Math.floor(vh * 0.26);
-    const x = Math.floor((vw - cropW) / 2);
-    const y = Math.floor((vh - cropH) / 2);
-
-    canvas.width = cropW;
-    canvas.height = cropH;
-
-    const ctx = canvas.getContext("2d", { willReadFrequently:true });
-    ctx.drawImage(video, x, y, cropW, cropH, 0, 0, cropW, cropH);
-
-    return canvas;
-  }
-
-  function createProcessedCanvas(srcCanvas, mode = "contrast"){
-    const dst = document.createElement("canvas");
-    dst.width = srcCanvas.width;
-    dst.height = srcCanvas.height;
-    const ctx = dst.getContext("2d", { willReadFrequently:true });
-    ctx.drawImage(srcCanvas, 0, 0);
-
-    const img = ctx.getImageData(0, 0, dst.width, dst.height);
-    const d = img.data;
-
-    for (let i = 0; i < d.length; i += 4) {
-      let gray = d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114;
-
-      if (mode === "contrast") {
-        gray = (gray - 128) * 1.8 + 128;
-      } else if (mode === "threshold") {
-        gray = (gray - 128) * 2.0 + 128;
-        gray = gray > 150 ? 255 : 0;
-      } else if (mode === "dark-text") {
-        gray = (gray - 128) * 2.2 + 128;
-        gray = Math.min(255, Math.max(0, gray));
-      }
-
-      gray = Math.max(0, Math.min(255, gray));
-      d[i] = d[i+1] = d[i+2] = gray;
-    }
-
-    ctx.putImageData(img, 0, 0);
-    return dst;
-  }
-
-  // -------------------------
-  // OCR / Barcode
-  // -------------------------
-  async function getOcrWorker(){
-    if (ocrWorker) return ocrWorker;
-
-    setStatus("OCR初期化中...");
-    ocrWorker = await Tesseract.createWorker("eng", 1, {
-      logger: (m) => {
-        if (m && m.status) {
-          const pct = typeof m.progress === "number" ? ` ${Math.round(m.progress * 100)}%` : "";
-          setStatus(`OCR: ${m.status}${pct}`);
-        }
-      }
-    });
-
-    await ocrWorker.setParameters({
-      tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/.",
-      preserve_interword_spaces: "0"
-    });
-
-    return ocrWorker;
-  }
-
-  async function tryBarcodeRead(imageSource){
-    if (!("BarcodeDetector" in window)) return [];
-
-    try{
-      const supported = await BarcodeDetector.getSupportedFormats();
-      const wanted = [
-        "ean_13","ean_8","upc_a","upc_e",
-        "code_39","code_128","codabar","itf","qr_code"
-      ].filter(f => supported.includes(f));
-
-      const detector = new BarcodeDetector(
-        wanted.length ? { formats: wanted } : {}
-      );
-
-      const results = await detector.detect(imageSource);
-      return unique(
-        results.map(r => (r.rawValue || "").trim().toUpperCase())
-      );
-    }catch(err){
-      console.warn("BarcodeDetector error:", err);
-      return [];
-    }
-  }
-
-  async function tryOcrRead(srcCanvas){
-    const worker = await getOcrWorker();
-    const targets = [
-      { canvas: srcCanvas, psm: 7 },                     // single line
-      { canvas: createProcessedCanvas(srcCanvas, "contrast"), psm: 7 },
-      { canvas: createProcessedCanvas(srcCanvas, "threshold"), psm: 8 }, // single word
-      { canvas: createProcessedCanvas(srcCanvas, "dark-text"), psm: 7 }
-    ];
-
-    const texts = [];
-
-    for (const t of targets) {
-      await worker.setParameters({
-        tessedit_pageseg_mode: t.psm,
-        tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/."
-      });
-      const ret = await worker.recognize(t.canvas);
-      texts.push(ret.data.text || "");
-    }
-
-    return {
-      texts,
-      product: pickBestProduct(texts),
-      candidates: unique(texts.flatMap(extractCandidates)).slice(0, 8)
-    };
-  }
-
-  // -------------------------
-  // 検索
-  // -------------------------
-  function searchUrls(product){
-    const p = (product || "").trim().toUpperCase();
-    if (!p) return [];
-
-    return [
-      {
-        label: "📄 説明書PDF",
-        url: `https://www.google.com/search?q=${encodeURIComponent(`"${p}" (説明書 OR 取扱説明書 OR 施工説明書) filetype:pdf`)}`
-      },
-      {
-        label: "📐 仕様書・寸法図",
-        url: `https://www.google.com/search?q=${encodeURIComponent(`"${p}" (仕様書 OR 寸法図 OR 図面) filetype:pdf`)}`
-      },
-      {
-        label: "🔌 配線図・結線図",
-        url: `https://www.google.com/search?q=${encodeURIComponent(`"${p}" (配線図 OR 結線図 OR 施工) filetype:pdf`)}`
-      },
-      {
-        label: "🌐 Web検索",
-        url: `https://www.google.com/search?q=${encodeURIComponent(p)}`
-      },
-      {
-        label: "🔎 Bing検索",
-        url: `https://www.bing.com/search?q=${encodeURIComponent(`"${p}" 説明書 仕様書 配線図`)}` 
-      },
-      {
-        label: "🛒 モノタロウ検索",
-        url: `https://www.monotaro.com/s/q-${encodeURIComponent(p)}/`
-      }
-    ];
-  }
-
-  function renderSearchLinks(product){
-    const p = (product || "").trim().toUpperCase();
-    if (!p){
-      searchLinksEl.innerHTML = `<div class="muted">品番を読み取るか手入力すると、ここに説明書・仕様書の検索ボタンを出します。</div>`;
-      return;
-    }
-
-    const links = searchUrls(p);
-    searchLinksEl.innerHTML = `
-      <div style="text-align:left">
-        <div class="result-main">検索対象品番: ${escapeHtml(p)}</div>
-        <div class="muted">説明書 / 仕様書 / 配線図 / 寸法図の検索リンクを自動生成しました</div>
-        <div class="links">
-          ${links.map(l => `<a href="${l.url}" target="_blank" rel="noopener">${l.label}</a>`).join("")}
-        </div>
-      </div>
-    `;
-  }
-
-  function searchManualByInput(){
-    const p = (manualInput.value || "").trim().toUpperCase();
-    if (!p){
-      alert("品番を入力してください");
-      return;
-    }
-    lastData = {
-      ...(lastData || {}),
-      product: p,
-      site: siteNameInput.value.trim() || (lastData?.site || "未設定"),
-      date: new Date().toLocaleString()
-    };
-    renderSearchLinks(p);
-    resultEl.innerHTML = `
-      <div class="result-main">手入力品番: ${escapeHtml(p)}</div>
-      <div class="muted">必要ならこのまま共有もできます</div>
-    `;
-  }
-
-  // -------------------------
-  // スキャン
-  // -------------------------
-  async function capture(){
-    if (isScanning) return;
-    if (!db) {
-      alert("DB初期化中です。少し待ってください。");
-      return;
-    }
-    if (!video.srcObject) {
-      alert("先にカメラを起動してください。");
-      return;
-    }
-
-    isScanning = true;
-    setStatus("読み取り中...");
-
-    try{
-      const capturedCanvas = captureGuideArea();
-      const barcodeResults = await tryBarcodeRead(capturedCanvas);
-
-      let product = "";
-      let candidates = [];
-      let rawTexts = [];
-
-      if (barcodeResults.length) {
-        product = barcodeResults[0];
-        candidates = barcodeResults;
-        setStatus("バーコードを検出しました");
-      } else {
-        const ocr = await tryOcrRead(capturedCanvas);
-        product = ocr.product;
-        candidates = ocr.candidates;
-        rawTexts = ocr.texts;
-      }
-
-      if (!product) {
-        product = (prompt("品番がうまく取れませんでした。手入力してください。") || "").trim().toUpperCase();
-      }
-
-      manualInput.value = product || manualInput.value || "";
-
-      const site = siteNameInput.value.trim() || "未設定";
-      const now = new Date();
-
-      const data = {
-        product,
-        site,
-        date: now.toLocaleString(),
-        ts: now.toISOString(),
-        image: capturedCanvas.toDataURL("image/jpeg", 0.9),
-        rawText: rawTexts.join("\n---\n"),
-        candidates
-      };
-
-      lastData = data;
-
-      resultEl.innerHTML = `
-        <div class="result-main">読み取り品番: ${escapeHtml(product || "未取得")}</div>
-        <div class="history-meta">現場: ${escapeHtml(site)}</div>
-        ${candidates.length ? `<div class="muted">候補: ${escapeHtml(candidates.join(" / "))}</div>` : `<div class="muted">候補なし</div>`}
-        ${data.image ? `<img src="${data.image}" alt="capture" style="width:100%;max-width:260px;border-radius:10px;border:1px solid #33424f;margin-top:10px;">` : ""}
-      `;
-
-      renderSearchLinks(product);
-
-      if (product) {
-        saveData(data);
-      }
-
-      setStatus(product ? "読み取り完了" : "読み取り失敗", !product);
-    }catch(err){
-      console.error(err);
-      setStatus(`読み取りエラー: ${err.message}`, true);
-    }finally{
-      isScanning = false;
-    }
-  }
-
-  // -------------------------
-  // 共有
-  // -------------------------
-  async function shareLast(){
-    const product = (manualInput.value || lastData?.product || "").trim().toUpperCase();
-    if (!product) {
-      alert("共有するデータがありません");
-      return;
-    }
-
-    const site = siteNameInput.value.trim() || lastData?.site || "未設定";
-    const date = lastData?.date || new Date().toLocaleString();
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(`"${product}" 説明書 filetype:pdf`)}`;
-    const text = `${site}\n品番: ${product}\n${date}\n説明書検索: ${searchUrl}`;
-
-    try{
-      // 画像も共有できる環境なら付ける
-      if (navigator.share && lastData?.image) {
-        const file = dataUrlToFile(lastData.image, `${product}.jpg`);
-        if (navigator.canShare && navigator.canShare({ files:[file] })) {
-          await navigator.share({
-            title: "電材情報",
-            text,
-            files: [file]
-          });
-          return;
-        }
-      }
-
-      if (navigator.share) {
-        await navigator.share({
-          title: "電材情報",
-          text
-        });
-      } else {
-        window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, "_blank");
-      }
-    }catch(err){
-      if (err && err.name !== "AbortError") {
-        window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, "_blank");
-      }
-    }
-  }
-
-  // -------------------------
-  // イベント
-  // -------------------------
-  manualInput.addEventListener("input", () => {
-    const p = manualInput.value.trim().toUpperCase();
-    renderSearchLinks(p);
-  });
-
-  historySearchInput.addEventListener("input", loadHistory);
-
-  window.addEventListener("beforeunload", async () => {
-    try{
-      if (ocrWorker) await ocrWorker.terminate();
-    }catch(_e){}
-    stopCamera();
-  });
-
-  // 初期化
-  initDB();
-  renderSearchLinks("");
-  resultEl.innerHTML = `<div class="muted">まだ読み取り結果はありません</div>`;
+  status.innerText="完了";
+}
+
+function addManual(){
+  addItem(manual.value);
+  manual.value="";
+}
+
+function addItem(code){
+  code=normalize(code);
+  let p=match(code);
+  list.push({code,name:p?p.name:""});
+  render();
+}
+
+function render(){
+  listDiv.innerHTML=list.map(v=>`
+    <div class="item">
+      ${v.code} ${v.name}
+    </div>
+  `).join("");
+}
+
+window.addEventListener("beforeunload",async()=>{
+  if(worker)await worker.terminate();
+});
+
+loadDB();
 </script>
+
+<script>
+if('serviceWorker'in navigator){
+ navigator.serviceWorker.register('sw.js');
+}
+</script>
+
 </body>
 </html>
