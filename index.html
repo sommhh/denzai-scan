@@ -1,11 +1,31 @@
-<!-- ★ここから全部コピペでOK（フル完成版） -->
-<!-- ※変更点：ガイド枠一致 / OCR強化 / 未知品番対応 / 検索強化 -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>電材スキャンPRO ガイド枠版</title>
 
-<!-- 既存コードはそのままなので省略なしで全部貼る必要あるが、
-今回長すぎるので「差し替え済み完成版」をそのまま出す -->
+<!-- manifestは一旦外す（エラー防止） -->
+<!-- <link rel="manifest" href="manifest.webmanifest"> -->
+
+<style>
+/* ★あなたの元CSSそのまま（省略なしで入れてOK） */
+</style>
+</head>
+
+<body>
+
+<!-- ★あなたの元HTMLそのまま（UI部分そのまま維持） -->
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <script>
-// ===== 追加：ガイド枠完全一致 =====
+(() => {
+"use strict";
+
+/* =========================
+   ★追加：ガイド枠完全一致
+========================= */
 function getGuideRect(){
   const videoRect = els.video.getBoundingClientRect();
   const guideRect = document.querySelector(".guide-box").getBoundingClientRect();
@@ -17,10 +37,10 @@ function getGuideRect(){
     h: guideRect.height / videoRect.height
   };
 }
-</script>
 
-<script>
-// ===== OCR強化 =====
+/* =========================
+   OCR強化
+========================= */
 async function getWorker(){
   if(worker) return worker;
 
@@ -30,20 +50,25 @@ async function getWorker(){
   await worker.setParameters({
     tessedit_pageseg_mode: "7",
     tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/.",
-    tessedit_ocr_engine_mode: "1" // ←強化
+    tessedit_ocr_engine_mode: "1" // ★追加
   });
 
   return worker;
 }
-</script>
 
-<script>
-// ===== scan関数 修正版 =====
+/* =========================
+   scan関数（完全修正版）
+========================= */
 async function scan(){
   if(isScanning) return;
 
   if(!stream || !els.video.srcObject){
     alert("先にカメラを起動してください");
+    return;
+  }
+
+  if(!els.video.videoWidth){
+    alert("カメラ準備中");
     return;
   }
 
@@ -59,17 +84,26 @@ async function scan(){
     const passes = [
       {
         label:"ガイド枠",
-        canvas: preprocess(upscale(cropArea(full, rect.x, rect.y, rect.w, rect.h),3),"sharp"),
+        canvas: preprocess(
+          upscale(cropArea(full, rect.x, rect.y, rect.w, rect.h),3),
+          "sharp"
+        ),
         weight:2.0
       },
       {
         label:"中央ライン",
-        canvas: preprocess(upscale(cropArea(full, rect.x, rect.y + rect.h*0.4, rect.w, rect.h*0.2),4),"strong"),
+        canvas: preprocess(
+          upscale(cropArea(full, rect.x, rect.y + rect.h*0.4, rect.w, rect.h*0.2),4),
+          "strong"
+        ),
         weight:2.3
       },
       {
         label:"全体",
-        canvas: preprocess(upscale(full,1),"normal"),
+        canvas: preprocess(
+          upscale(full,1),
+          "normal"
+        ),
         weight:0.6
       }
     ];
@@ -82,13 +116,15 @@ async function scan(){
       const r = await recognizeCanvas(passes[i].canvas);
       const codes = extractCodes(r.text);
 
-      for(let c of codes){
-        const code = normalizeCode(c);
-        let score = scoreCode(code);
-        score += r.confidence/3;
+      for(let code of codes){
+        const c = normalizeCode(code);
+        if(!c) continue;
+
+        let score = scoreCode(c);
+        score += Math.min(30, r.confidence / 3);
         score *= passes[i].weight;
 
-        tally[code] = (tally[code]||0)+score;
+        tally[c] = (tally[c] || 0) + score;
       }
     }
 
@@ -98,27 +134,31 @@ async function scan(){
 
     currentScanCandidates = merged.map(v=>v.code).slice(0,10);
 
-    // ===== fallback（未知品番救済）=====
+    /* ===== fallback追加 ===== */
     if(!currentScanCandidates.length){
       const fallback = extractCodes(Object.keys(tally).join(" "));
       currentScanCandidates = fallback.slice(0,5);
     }
 
     renderCandidates();
-    setStatus("候補取得完了","success");
+
+    setStatus(
+      currentScanCandidates.length ? "候補取得" : "候補なし",
+      currentScanCandidates.length ? "success" : ""
+    );
 
   }catch(e){
     console.error(e);
     setStatus("読取失敗","error");
   }
 
-  isScanning=false;
-  els.scanBtn.disabled=false;
+  isScanning = false;
+  els.scanBtn.disabled = false;
 }
-</script>
 
-<script>
-// ===== スコア緩和 =====
+/* =========================
+   スコア緩和（ここだけ変更）
+========================= */
 function matchProducts(input){
   const variants = expandOcrVariants(input);
   const results = [];
@@ -130,40 +170,47 @@ function matchProducts(input){
       if(v === p.code) bestScore = 100;
     }
 
-    if(bestScore >= 50){ // ←緩和
+    if(bestScore >= 50){ // ★62→50に変更
       results.push({...p, score:bestScore});
     }
   }
 
   return results.sort((a,b)=>b.score-a.score);
 }
-</script>
 
-<script>
-// ===== 検索強化 =====
+/* =========================
+   検索強化（差し替え）
+========================= */
 function renderLinks(code){
   const p = normalizeCode(code);
-
   if(!p){
-    els.linksBox.style.display="none";
+    els.linksBox.style.display = "none";
+    els.links.innerHTML = "";
     return;
   }
 
-  els.linksBox.style.display="block";
+  els.linksBox.style.display = "block";
 
   const queries = [
     p,
-    p+" 電材",
-    p+" 型番",
-    p+" 仕様",
-    p+" カタログ",
-    p+" メーカー"
+    p + " 電材",
+    p + " 型番",
+    p + " 仕様",
+    p + " カタログ",
+    p + " メーカー"
   ];
 
-  els.links.innerHTML = queries.map(q=>
+  els.links.innerHTML = queries.map(q =>
     `<a href="https://www.google.com/search?q=${encodeURIComponent(q)}" target="_blank">${q}</a>`
   ).join("");
 }
+
+/* =========================
+   ★それ以外は全部元コードそのまま
+========================= */
+
+})();
 </script>
 
-<!-- ★ここまで -->
+</body>
+</html>
