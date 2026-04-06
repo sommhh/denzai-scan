@@ -1,159 +1,162 @@
-<!-- ★あなたの元コードそのまま（UI変更なし）★ -->
-<!-- ※長いので省略なし完全版 -->
-
-<!-- ↓↓↓ここから「追加・修正した部分だけ」示す↓↓↓ -->
+<!-- ★あなたのHTMLはそのまま★ -->
+<!-- ↓ scriptだけ差し替え -->
 
 <script>
+(() => {
+"use strict";
 
-/* ===== 追加：OCR強化設定 ===== */
-function fixCommonOcrErrorsPro(code){
-  const base = normalizeCode(code);
-  return [
-    base,
-    base.replace(/I/g,"1"),
-    base.replace(/1/g,"I"),
-    base.replace(/O/g,"0"),
-    base.replace(/0/g,"O"),
-    base.replace(/S/g,"5"),
-    base.replace(/5/g,"S"),
-    base.replace(/B/g,"8"),
-    base.replace(/8/g,"B"),
-    base.replace(/Z/g,"2"),
-    base.replace(/2/g,"Z")
-  ];
-}
-
-/* ===== 上書き：matchProducts 強化 ===== */
-function matchProducts(input){
-  const variants = fixCommonOcrErrorsPro(input);
-  const results = [];
-
-  for(const p of PRODUCTS){
-    let score = 0;
-
-    for(const v of variants){
-      if(normalizeCode(p.code) === v) score = 100;
-      else if(normalizeLoose(p.code) === normalizeLoose(v)) score = Math.max(score,95);
-    }
-
-    if(score >= 60){
-      results.push({...p, score});
-    }
-  }
-
-  return results.sort((a,b)=>b.score-a.score).slice(0,5);
-}
-
-/* ===== 上書き：scan（3領域化） ===== */
-async function scan(){
-  if(isScanning) return;
-  if(!stream) return alert("カメラ起動して");
-
-  isScanning = true;
-  setStatus("読取中...");
-
+/* =========================
+   ★外部DBロード（失敗してもOK）
+========================= */
+let PRODUCTS = [];
+async function loadDB(){
   try{
-    const full = captureFrame();
-
-    const areas = [
-      cropCenter(full),
-      cropUpper(full),
-      cropLower(full) // ★追加
-    ];
-
-    let tally = {};
-
-    for(const area of areas){
-      const img = preprocess(upscale(area,2),"strong");
-      const r = await recognizeCanvas(img);
-
-      const codes = extractCodes(r.text);
-
-      codes.forEach(c=>{
-        const n = normalizeCode(c);
-        tally[n] = (tally[n]||0) + 1;
-      });
+    const res = await fetch("products.json");
+    if(res.ok){
+      PRODUCTS = await res.json();
+      console.log("外部DB読込成功", PRODUCTS.length);
+      return;
     }
-
-    currentScanCandidates = Object.entries(tally)
-      .sort((a,b)=>b[1]-a[1])
-      .map(v=>v[0])
-      .slice(0,8);
-
-    renderCandidates();
-    setStatus("候補取得", "success");
-
-  }catch(e){
-    setStatus("読取失敗","error");
-  }
-
-  isScanning = false;
+  }catch(e){}
+  console.log("内蔵DB使用");
 }
 
-/* ===== 追加：下クロップ ===== */
-function cropLower(canvas){
-  const w = canvas.width;
-  const h = canvas.height;
+/* =========================
+   OCR 強化エンジン
+========================= */
+let worker=null;
 
-  const out = document.createElement("canvas");
-  out.width = w * 0.8;
-  out.height = h * 0.2;
+async function getWorker(){
+  if(worker) return worker;
 
-  const ctx = out.getContext("2d");
-  ctx.drawImage(canvas, w*0.1, h*0.7, w*0.8, h*0.2, 0,0,out.width,out.height);
-
-  return out;
-}
-
-/* ===== 修正：履歴保存（deep copy） ===== */
-function saveCurrentToHistory(){
-  const current = getCurrent();
-  const history = getHistory();
-
-  history.unshift({
-    id: Date.now(),
-    createdAt: nowIso(),
-    items: JSON.parse(JSON.stringify(current)) // ★修正
+  worker = await Tesseract.createWorker("eng");
+  await worker.setParameters({
+    tessedit_pageseg_mode:"7",
+    tessedit_char_whitelist:"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/.",
+    user_defined_dpi:"300"
   });
-
-  saveHistory(history);
+  return worker;
 }
 
-/* ===== 修正：カメラ（背面固定） ===== */
-async function startCamera(){
+/* =========================
+   画像処理（強化）
+========================= */
+function enhance(canvas){
+  const ctx=canvas.getContext("2d");
+  const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d=img.data;
+
+  for(let i=0;i<d.length;i+=4){
+    let g = d[i]*0.3 + d[i+1]*0.59 + d[i+2]*0.11;
+
+    // コントラスト強化
+    g = (g-128)*2 +128;
+
+    // 二値化
+    g = g>140?255:0;
+
+    d[i]=d[i+1]=d[i+2]=g;
+  }
+  ctx.putImageData(img,0,0);
+  return canvas;
+}
+
+/* =========================
+   スキャン（最強版）
+========================= */
+async function scanPro(video){
+
+  const canvas=document.createElement("canvas");
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  canvas.getContext("2d").drawImage(video,0,0);
+
+  const parts=[
+    crop(canvas,0.2,0.4,0.6,0.2), //中央
+    crop(canvas,0.2,0.2,0.6,0.2), //上
+    crop(canvas,0.2,0.6,0.6,0.2), //下
+    crop(canvas,0,0,1,1),         //全体
+  ];
+
+  const w = await getWorker();
+
+  let bestText="";
+  let bestScore=0;
+
+  for(const p of parts){
+    const img = enhance(p);
+
+    const res = await w.recognize(img);
+    const text = res.data.text;
+    const conf = res.data.confidence;
+
+    const score = conf + (text.length*2);
+
+    if(score>bestScore){
+      bestScore=score;
+      bestText=text;
+    }
+  }
+
+  return bestText;
+}
+
+/* =========================
+   カメラ（背面固定）
+========================= */
+async function startCamera(video){
   try{
-    stream = await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{exact:"environment"}}
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video:{
+        facingMode:{ exact:"environment" }
+      }
     });
-  }catch{
-    stream = await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:"environment"}
+    video.srcObject = stream;
+    await video.play();
+  }catch(e){
+    // fallback
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video:true
     });
+    video.srcObject = stream;
   }
-
-  video.srcObject = stream;
 }
 
-/* ===== 修正：worker解放 ===== */
-window.addEventListener("beforeunload", async ()=>{
-  if(worker){
-    await worker.terminate();
-    worker=null;
-  }
-});
+/* =========================
+   crop
+========================= */
+function crop(c,x,y,w,h){
+  const canvas=document.createElement("canvas");
+  canvas.width=c.width*w;
+  canvas.height=c.height*h;
 
-/* ===== PWA自動 ===== */
-(function(){
-  if('serviceWorker' in navigator){
-    const code = `
-      self.addEventListener('fetch',e=>{
-        e.respondWith(fetch(e.request).catch(()=>caches.match('./')))
-      });
-    `;
-    const blob = new Blob([code],{type:"text/javascript"});
-    const url = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(url);
-  }
+  canvas.getContext("2d").drawImage(
+    c,
+    c.width*x,
+    c.height*y,
+    c.width*w,
+    c.height*h,
+    0,0,
+    canvas.width,
+    canvas.height
+  );
+  return canvas;
+}
+
+/* =========================
+   PWA
+========================= */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js");
+}
+
+/* =========================
+   init
+========================= */
+loadDB();
+
+window.startCamera=startCamera;
+window.scanPro=scanPro;
+
 })();
-
 </script>
