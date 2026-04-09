@@ -30,6 +30,7 @@ input{
   border-radius:10px;
   border:1px solid #ccc;
   margin:10px 0;
+  font-size:16px;
 }
 .btn{
   width:100%;
@@ -39,6 +40,7 @@ input{
   border-radius:12px;
   color:#fff;
   font-weight:bold;
+  font-size:16px;
 }
 .lens{background:#000;}
 .manual{background:#4285f4;}
@@ -56,8 +58,9 @@ input{
 📷 Googleレンズ
 </a>
 
-<input id="modelInput" placeholder="コピーした型番">
+<input id="modelInput" placeholder="型番を入力 or ペースト">
 
+<button class="btn manual" onclick="pasteAndSearch()">📋 貼り付け検索</button>
 <button class="btn manual" onclick="searchNow('取扱説明書')">📖 取説</button>
 <button class="btn spec" onclick="searchNow('仕様書')">📑 仕様書</button>
 
@@ -65,32 +68,30 @@ input{
 
 <script>
 
-let lastText = "";
-
-// 🔥 自動チェック（0.8秒ごと）
-setInterval(async ()=>{
+// 🔥 クリップボード → 即検索（ユーザー操作トリガー）
+async function pasteAndSearch(){
   try{
-    if(!navigator.clipboard) return;
-
     const text = await navigator.clipboard.readText();
 
-    if(text && text !== lastText){
-      lastText = text;
-
-      // 入力欄に反映
-      document.getElementById("modelInput").value = text;
-
-      // 🔥 自動検索（仕様書優先）
-      autoSearch(text);
+    if(!text){
+      alert("コピーされてません");
+      return;
     }
 
-  }catch(e){}
-},800);
+    const clean = text.trim();
+
+    document.getElementById("modelInput").value = clean;
+
+    autoSearch(clean);
+
+  }catch(e){
+    alert("iPhoneは長押し→ペーストしてください");
+  }
+}
 
 
 // 🔍 自動検索
 function autoSearch(keyword){
-  keyword = keyword.trim();
   if(!keyword) return;
 
   const q = encodeURIComponent(
@@ -101,12 +102,12 @@ function autoSearch(keyword){
 }
 
 
-// 手動検索
+// 🔍 手動検索
 function searchNow(type){
   const keyword = document.getElementById("modelInput").value.trim();
 
   if(!keyword){
-    alert("型番を貼り付けてください");
+    alert("型番を入力してください");
     return;
   }
 
