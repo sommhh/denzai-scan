@@ -192,288 +192,192 @@
 })();</script>
 <script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
 <meta charset="UTF-8">
-<title>電力申請 v41 - Pro</title>
+<title>電力申請 v40</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0f172a">
+<meta name="color-scheme" content="light only">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden;font-family:'Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-serif;background:#0f172a;overscroll-behavior:none}
-button{cursor:pointer;touch-action:manipulation}
-::-webkit-scrollbar{width:0;height:0}
-
-.app{display:flex;height:100vh;height:100dvh;width:100vw;background:linear-gradient(180deg,#0f172a 0%,#1e293b 100%)}
-.sidebar{width:360px;background:#fff;display:flex;flex-direction:column;z-index:1000;box-shadow:8px 0 32px rgba(0,0,0,0.3);transition:transform .3s cubic-bezier(.2,.8,.2,1);position:relative}
+:root{color-scheme:light;--pri:#2563eb;--pri2:#1e3a8a;--ink:#0f172a;--mut:#64748b;--bd:#e2e8f0;--bg:#f8fafc}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"SF Pro JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;background:linear-gradient(180deg,#f8fafc 0%,#eef2ff 100%);color:#0f172a}
+@media (prefers-color-scheme:dark){html,body{background:#f8fafc!important;color:#0f172a!important}input,select,textarea{background:#fff!important;color:#000!important}}
+button,input,select,textarea{font-family:inherit;font-size:16px;outline:none}
+button{cursor:pointer;user-select:none;touch-action:manipulation}
+.app{display:flex;height:100vh;height:100dvh;width:100vw;position:relative}
+.sidebar{width:360px;min-width:320px;background:rgba(255,255,255,.94);backdrop-filter:saturate(180%) blur(20px);display:flex;flex-direction:column;z-index:1000;box-shadow:0 0 0 1px rgba(0,0,0,.04),0 20px 40px -12px rgba(0,0,0,.25);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
 .sidebar.hide{transform:translateX(-100%)}
-@media(max-width:1024px){
-  .sidebar{position:absolute;left:0;top:0;bottom:0;width:min(380px,92vw);border-radius:0 24px 24px 0}
-  .sidebar.hide ~ .mapw .fab{opacity:1;pointer-events:auto}
-}
+.drag{display:none}
+@media(max-width:900px){.sidebar{width:100%;max-width:100%}}
 @media(max-width:768px){
-  .sidebar{position:absolute;left:0;right:0;bottom:0;top:auto;width:100%;height:72vh;max-height:calc(100dvh - 16px);border-radius:28px 28px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,0.4);transition:transform .3s cubic-bezier(.2,.8,.2,1),height .3s}
-  .sidebar.hide{transform:translateY(100%)}
+  .sidebar{position:absolute;left:0;right:0;bottom:0;top:auto;height:72vh;max-height:85vh;border-radius:28px 28px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);z-index:2000;transform:translateY(0)}
+  .sidebar.hide{transform:translateY(105%)}
+  .drag{display:block;width:44px;height:5px;background:#cbd5e1;border-radius:3px;margin:10px auto 4px}
 }
-
-.head{position:relative;background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 50%,#3b82f6 100%);color:#fff;padding:18px 16px 14px;padding-top:calc(18px + env(safe-area-inset-top));flex-shrink:0;overflow:hidden}
-.head::before{content:'';position:absolute;top:-50%;right:-20%;width:300px;height:300px;background:radial-gradient(circle,rgba(255,255,255,0.15) 0%,transparent 70%);border-radius:50%}
-.head::after{content:'';position:absolute;bottom:-20px;left:-10%;right:-10%;height:40px;background:#f8fafc;border-radius:50% 50% 0 0/100% 100% 0 0}
-.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:relative;z-index:2}
-.top h1{font-size:18px;font-weight:700;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
-.top h1 span:first-child{font-size:22px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))}
-.version{font-size:10px;background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px;font-weight:600;backdrop-filter:blur(10px)}
-.tg{width:36px;height:36px;background:rgba(255,255,255,0.18);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.25);border-radius:12px;color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
-.tg:active{transform:scale(.92);background:rgba(255,255,255,0.25)}
-
-.quick-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;position:relative;z-index:2}
-.quick-btn{height:44px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);color:#1e293b;border:none;border-radius:12px;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,0.12);position:relative;overflow:hidden}
-.quick-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,0.3),transparent);opacity:0;transition:opacity .2s}
-.quick-btn:active{transform:translateY(1px) scale(.96);box-shadow:0 1px 4px rgba(0,0,0,0.2)}
-.quick-btn:active::before{opacity:1}
-.quick-btn .icon{font-size:16px;line-height:1}
-.quick-btn .label{font-size:9px;opacity:.8;line-height:1}
-
-.form{flex:1;overflow-y:auto;padding:16px;background:#f8fafc;-webkit-overflow-scrolling:touch;position:relative}
-.form::before{content:'';position:absolute;top:0;left:0;right:0;height:20px;background:linear-gradient(180deg,#f8fafc 0%,rgba(248,250,252,0) 100%);pointer-events:none;z-index:10}
-
-.section{margin-bottom:18px}
-.section-title{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#e2e8f0,transparent)}
-
-.card{background:#fff;border-radius:16px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);border:1px solid #f1f5f9;transition:all .2s}
-.card:active{transform:scale(.998)}
-
-.f{margin-bottom:12px}
-.f:last-child{margin-bottom:0}
-.f label{display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:#334155;letter-spacing:.2px}
-.f input,.f select,.f textarea{width:100%;padding:11px 13px;border:1.5px solid #e2e8f0;border-radius:11px;font-size:15px;height:44px;background:#fff;transition:all .2s;font-weight:500;color:#0f172a}
-.f input::placeholder,.f textarea::placeholder{color:#94a3b8;font-weight:400}
-.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.12);background:#fff}
-.f textarea{height:70px;resize:none;padding-top:10px}
-
-.r{display:flex;gap:8px}
-.r label{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;padding:10px 8px;background:#f8fafc;border:2px solid #e2e8f0;border-radius:11px;cursor:pointer;transition:all .2s;position:relative}
-.r label:has(input:checked){background:#eff6ff;border-color:#3b82f6;color:#1d4ed8;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+.head{position:relative;background:linear-gradient(135deg,#0f1f5f 0%,#1e3a8a 40%,#2563eb 100%);color:#fff;padding:14px 14px 16px;padding-top:calc(14px + env(safe-area-inset-top));overflow:hidden}
+.head::after{content:"";position:absolute;inset:-40% -20% auto; height:200px;background:radial-gradient(60% 60% at 20% 0%,rgba(255,255,255,.25),transparent 60%);pointer-events:none}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.top h1{font-size:17px;font-weight:800;letter-spacing:.2px;display:flex;align-items:center;gap:8px}
+.tg{width:36px;height:36px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:12px;color:#fff;font-size:16px;display:grid;place-items:center;backdrop-filter:blur(8px);transition:.2s}
+.tg:active{transform:scale(.94)}
+.btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.btns button{height:42px;background:#fff;color:#1e3a8a;border:none;border-radius:12px;font-size:12.5px;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.06),0 4px 12px rgba(30,58,138,.12);transition:.18s;display:flex;align-items:center;justify-content:center;gap:6px}
+.btns button:active{transform:translateY(1px) scale(.98)}
+.btns button:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(30,58,138,.18)}
+.form{flex:1;overflow-y:auto;padding:16px 14px 24px;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);-webkit-overflow-scrolling:touch}
+.form::-webkit-scrollbar{width:6px} .form::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+.f{margin-bottom:14px}
+.f label{display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:#334155;letter-spacing:.2px}
+.f input,.f select,.f textarea{width:100%;padding:12px 13px;border:1.5px solid var(--bd);border-radius:14px;font-size:16px;height:46px;background:#fff;transition:.18s;box-shadow:inset 0 1px 2px rgba(0,0,0,.02)}
+.f textarea{height:64px;resize:vertical;padding-top:10px}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:#2563eb;box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+.r{display:flex;gap:10px;flex-wrap:wrap}
+.r label{display:flex;align-items:center;gap:7px;font-size:14px;padding:8px 12px;background:#fff;border:1.5px solid var(--bd);border-radius:12px;cursor:pointer;transition:.15s}
 .r input{width:18px;height:18px;accent-color:#2563eb}
-
+.r label:has(input:checked){border-color:#2563eb;background:#eff6ff;color:#1e3a8a;font-weight:700}
 .chk{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.chk label{font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;padding:11px 12px;background:#f8fafc;border:2px solid #e2e8f0;border-radius:12px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
-.chk label::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#3b82f6;transform:scaleY(0);transition:transform .2s}
-.chk label:has(input:checked){background:#eff6ff;border-color:#3b82f6;color:#1e40af;font-weight:600}
-.chk label:has(input:checked)::before{transform:scaleY(1)}
-.chk input{width:18px;height:18px;accent-color:#2563eb;flex-shrink:0}
-
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.pill-group{display:flex;gap:6px;flex-wrap:wrap}
-.pill{padding:6px 12px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:20px;font-size:12px;font-weight:600;color:#475569;cursor:pointer;transition:all .2s}
-.pill.active{background:#1e3a8a;color:#fff;border-color:#1e3a8a}
-
-.mapw{flex:1;position:relative;background:#0f172a;overflow:hidden}
-#map{width:100%;height:100%;background:#1e293b}
-
-.tools{position:absolute;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:1100;background:rgba(15,23,42,0.92);backdrop-filter:blur(24px) saturate(180%);padding:8px;border-radius:20px;box-shadow:0 8px 32px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.1) inset;display:flex;gap:6px;max-width:calc(100% - 24px);overflow-x:auto;scrollbar-width:none}
+.chk label{font-size:13.5px;display:flex;align-items:center;gap:8px;padding:11px 12px;background:#fff;border:2px solid #e5e7eb;border-radius:14px;cursor:pointer;transition:.15s;font-weight:600;color:#334155;box-shadow:0 1px 1px rgba(0,0,0,.02)}
+.chk label:has(input:checked){background:linear-gradient(180deg,#eff6ff,#dbeafe);border-color:#2563eb;color:#1e3a8a;box-shadow:0 4px 12px rgba(37,99,235,.18);transform:translateY(-1px)}
+.chk input{width:18px;height:18px;accent-color:#2563eb}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mapw{flex:1;position:relative;background:#cbd5e1;overflow:hidden}
+#map{position:absolute;inset:0;width:100%;height:100%;background:#e2e8f0}
+.tools{position:absolute;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:1100;background:rgba(255,255,255,.88);backdrop-filter:blur(16px) saturate(180%);padding:8px;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.22),0 0 0 1px rgba(0,0,0,.04);display:flex;gap:6px;max-width:calc(100% - 20px);overflow-x:auto;scrollbar-width:none}
 .tools::-webkit-scrollbar{display:none}
-.tool-btn{height:58px;min-width:64px;padding:6px 10px;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.1);border-radius:14px;font-size:10px;font-weight:600;color:rgba(255,255,255,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:all .2s;position:relative;white-space:nowrap}
-.tool-btn .icon{font-size:20px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.3))}
-.tool-btn:active{transform:scale(.94)}
-.tool-btn.on{background:#3b82f6;color:#fff;border-color:#60a5fa;box-shadow:0 0 20px rgba(59,130,246,0.5),0 0 0 1px rgba(255,255,255,0.2) inset}
-.tool-btn.on .icon{filter:drop-shadow(0 0 8px rgba(255,255,255,0.5))}
-.tool-btn[data-t="bldf"].ready::after{content:"✓";position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;width:20px;height:20px;border-radius:10px;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 2px 8px rgba(239,68,68,0.5);animation:pulse 1.5s infinite}
-
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
-
-.hint{position:absolute;top:calc(16px + env(safe-area-inset-top));left:50%;transform:translateX(-50%) translateY(-10px);background:rgba(15,23,42,0.96);backdrop-filter:blur(20px);color:#fff;padding:12px 20px;border-radius:16px;font-size:13px;font-weight:500;z-index:1000;pointer-events:none;opacity:0;transition:all .3s cubic-bezier(.2,.8,.2,1);max-width:90%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.3),0 0 0 1px rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.1)}
+.tools button{height:60px;min-width:70px;padding:6px 10px;background:#f1f5f9;border:2px solid transparent;border-radius:14px;font-size:11px;font-weight:700;color:#334155;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:.18s;position:relative;white-space:nowrap}
+.tools button:active{transform:scale(.94)}
+.tools button.on{background:linear-gradient(135deg,#2563eb,#1e40af);color:#fff;border-color:#1e40af;box-shadow:0 8px 18px rgba(37,99,235,.35);transform:translateY(-2px)}
+.tools button.ready::after{content:"";position:absolute;top:-4px;right:-4px;width:10px;height:10px;background:#22c55e;border-radius:50%;box-shadow:0 0 0 3px rgba(34,197,94,.25);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.hint{position:absolute;top:calc(16px + env(safe-area-inset-top));left:50%;transform:translateX(-50%) translateY(-8px);background:rgba(15,23,42,.92);color:#fff;padding:10px 16px;border-radius:16px;font-size:13px;font-weight:600;z-index:1000;pointer-events:none;opacity:0;transition:.25s;max-width:90%;text-align:center;backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
 .hint.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-.fab{position:absolute;bottom:calc(100px + env(safe-area-inset-bottom));right:16px;width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;border:none;font-size:24px;z-index:1002;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(30,58,138,0.4),0 0 0 1px rgba(255,255,255,0.1) inset;transition:all .3s;opacity:0;pointer-events:none;transform:scale(.9)}
-.fab.show{opacity:1;pointer-events:auto;transform:scale(1)}
-.fab:active{transform:scale(.92)}
-
-.map-controls{position:absolute;top:calc(16px + env(safe-area-inset-top));right:16px;z-index:1001;display:flex;flex-direction:column;gap:8px}
-.map-btn{width:44px;height:44px;background:rgba(15,23,42,0.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all .2s}
-.map-btn:active{transform:scale(.92);background:rgba(15,23,42,1)}
-
-.marker-pole{width:30px;height:30px;border-radius:50%;background:#fff;border:3px solid #0f172a;box-shadow:0 3px 10px rgba(0,0,0,0.4),0 0 0 2px rgba(255,255,255,0.8) inset;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0f172a}
-.marker-trans{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#fef2f2,#fee2e2);border:3px solid #dc2626;box-shadow:0 3px 10px rgba(220,38,38,0.4),0 0 0 2px rgba(255,255,255,0.9) inset;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#dc2626}
-.marker-label{background:#fff;border:2px solid #0f172a;padding:4px 8px;font-size:11px;font-weight:700;white-space:nowrap;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.25);transform:translate(-50%,-160%);cursor:pointer;letter-spacing:.2px}
+.fab{position:absolute;bottom:calc(100px + env(safe-area-inset-bottom));right:18px;width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border:none;font-size:24px;z-index:1002;display:none;box-shadow:0 12px 24px rgba(30,58,138,.4),0 2px 6px rgba(0,0,0,.2);align-items:center;justify-content:center;transition:.2s}
+.fab:active{transform:scale(.94)}
+.sidebar.hide ~ .mapw .fab{display:flex}
+@media(max-width:768px){.fab{display:flex}}
+.marker-pole{width:30px;height:30px;border-radius:50%;background:#fff;border:3px solid #0f172a;box-shadow:0 3px 8px rgba(0,0,0,.3),0 0 0 4px rgba(15,23,42,.08);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#0f172a}
+.marker-trans{width:32px;height:32px;border-radius:50%;background:#fff;border:3px solid #dc2626;box-shadow:0 3px 8px rgba(220,38,.3),0 0 0 4px rgba(220,38,38,.1);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#dc2626}
+.marker-label{background:#fff;border:2px solid #0f172a;padding:4px 8px;font-size:11.5px;font-weight:800;white-space:nowrap;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.18);transform:translate(-50%,-140%);cursor:pointer;letter-spacing:.2px}
 .marker-label.red{border-color:#dc2626;color:#dc2626;background:linear-gradient(180deg,#fff,#fef2f2)}
-.text-lab{background:#fff;border:2px solid #1e293b;padding:5px 10px;font-size:12px;font-weight:600;white-space:nowrap;border-radius:8px;box-shadow:0 3px 10px rgba(0,0,0,0.2);cursor:pointer}
-
-.gps-dot{width:20px;height:20px;position:relative}
-.gps-dot::before{content:'';position:absolute;inset:0;background:#3b82f6;border-radius:50%;box-shadow:0 0 0 3px rgba(59,130,246,0.3);animation:gps-pulse 2s infinite}
-.gps-dot::after{content:'';position:absolute;inset:4px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.3)}
-@keyframes gps-pulse{0%{box-shadow:0 0 0 0 rgba(59,130,246,0.7)}70%{box-shadow:0 0 0 12px rgba(59,130,246,0)}100%{box-shadow:0 0 0 0 rgba(59,130,246,0)}}
-
-.modal{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:all .3s}
-.modal.show{opacity:1;pointer-events:auto}
-.modal-box{background:#fff;width:100%;max-width:420px;border-radius:24px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.4);transform:scale(.95) translateY(10px);transition:all .3s cubic-bezier(.2,.8,.2,1)}
-.modal.show .modal-box{transform:scale(1) translateY(0)}
-.modal h3{font-size:19px;font-weight:700;margin-bottom:18px;color:#0f172a;display:flex;align-items:center;gap:8px}
-.modal .row{margin-bottom:14px}
-.modal label{font-size:13px;color:#475569;display:block;margin-bottom:6px;font-weight:600}
-.modal input,.modal select{width:100%;padding:13px 15px;border:2px solid #e2e8f0;border-radius:12px;font-size:16px;font-weight:500;transition:all .2s;background:#f8fafc}
-.modal input:focus,.modal select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.12);background:#fff}
-.modal-btns{display:flex;gap:10px;margin-top:20px}
-.modal-btns button{flex:1;height:48px;border:none;border-radius:12px;font-size:15px;font-weight:600;transition:all .2s}
-.modal-ok{background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;box-shadow:0 4px 12px rgba(30,58,138,0.3)}
-.modal-ok:active{transform:scale(.97)}
-.modal-cancel{background:#f1f5f9;color:#475569}
-.modal-cancel:active{background:#e2e8f0;transform:scale(.97)}
-
-.toast{position:fixed;bottom:calc(120px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(20px);background:#0f172a;color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;z-index:6000;opacity:0;pointer-events:none;transition:all .3s;box-shadow:0 8px 24px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;gap:8px}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.text-lab{background:#fff;border:2px solid #1f2937;padding:5px 9px;font-size:12.5px;font-weight:700;white-space:nowrap;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.18);cursor:pointer}
+.modal{position:fixed;inset:0;background:rgba(2,6,23,.55);backdrop-filter:blur(6px);z-index:5000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal.show{display:flex;animation:fade .2s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal-box{background:#fff;width:100%;max-width:440px;border-radius:24px;padding:22px 20px 18px;box-shadow:0 20px 50px rgba(0,0,0,.3);transform:scale(.96);animation:pop .2s ease forwards}
+@keyframes pop{to{transform:scale(1)}}
+.modal-box h3{font-size:17px;font-weight:800;margin-bottom:14px;color:#0f172a}
+.modal-box .row{margin-bottom:12px}
+.modal-box label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#475569}
+.modal-box input,.modal-box select,.modal-box textarea{width:100%;padding:11px 12px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:16px}
+.modal-btns{display:flex;gap:8px;margin-top:16px}
+.modal-btns button{flex:1;height:44px;border-radius:12px;font-weight:700;border:none;transition:.15s}
+.modal-cancel{background:#f1f5f9;color:#334155}
+.modal-cancel:active{transform:scale(.98)}
+.modal-ok{background:linear-gradient(135deg,#2563eb,#1e40af);color:#fff;box-shadow:0 6px 16px rgba(37,99,235,.3)}
+.modal-ok:active{transform:scale(.98)}
+.leaflet-control-zoom a{background:#fff!important;border:none!important;box-shadow:0 4px 12px rgba(0,0,0,.15)!important;color:#0f172a!important;font-weight:700}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="sidebar" id="sb">
+    <div class="drag"></div>
     <div class="head">
-      <div class="top">
-        <h1><span>⚡</span>電力申請<span class="version">v41 PRO</span></h1>
-        <button class="tg" id="tg" type="button" aria-label="閉じる">✕</button>
+      <div class="top"><h1>⚡ 電力申請 v40</h1><button class="tg" id="tg" type="button">✕</button></div>
+      <div class="btns">
+        <button id="gps" type="button">📍 GPS</button>
+        <button id="save" type="button">💾 保存</button>
+        <button id="load" type="button">📂 読込</button>
+        <button id="undo" type="button">↩️ 戻る</button>
+        <button id="clear" type="button">🗑️ 全消</button>
+        <button id="share" type="button">📤 共有</button>
       </div>
-      <div class="quick-grid">
-        <button class="quick-btn" id="gps" type="button"><span class="icon">📍</span><span class="label">GPS</span></button>
-        <button class="quick-btn" id="save" type="button"><span class="icon">💾</span><span class="label">保存</span></button>
-        <button class="quick-btn" id="load" type="button"><span class="icon">📂</span><span class="label">読込</span></button>
-        <button class="quick-btn" id="undo" type="button"><span class="icon">↩️</span><span class="label">戻る</span></button>
-        <button class="quick-btn" id="image" type="button"><span class="icon">🖼️</span><span class="label">画像</span></button>
-        <button class="quick-btn" id="share" type="button"><span class="icon">📤</span><span class="label">共有</span></button>
-      </div>
+    </div>
     <div class="form">
-      <div class="section">
-        <div class="section-title">📋 基本情報</div>
-        <div class="card">
-          <div class="f"><label>現場名</label><input id="genba" placeholder="例）佐藤様邸新築工事"></div>
-          <div class="f"><label>住所</label><input id="jusho" placeholder="GPSボタンで自動取得"></div>
-          <div class="grid2">
-            <div class="f"><label>工事種別</label><div class="r"><label><input type="radio" name="k" value="本設" checked>本設</label><label><input type="radio" name="k" value="仮設">仮設</label></div></div>
-            <div class="f"><label>供給</label><select id="kyokyu"><option>単相2線式 100V</option><option selected>単相3線式 100V/200V</option><option>三相3線式 200V</option></select></div>
-          </div>
-        </div>
+      <div class="f"><label>現場名</label><input id="genba" placeholder="〇〇邸新築工事"></div>
+      <div class="f"><label>住所</label><input id="jusho" placeholder="宮城県名取市..."></div>
+      <div class="f"><label>工事種別</label><div class="r"><label><input type="radio" name="k" value="本設" checked>本設</label><label><input type="radio" name="k" value="仮設">仮設</label></div></div>
+      <div class="f"><label>供給方式</label><select id="kyokyu"><option>単相2線式 100V</option><option selected>単相3線式 100V/200V</option><option>三相3線式 200V</option></select></div>
+      <div class="grid2">
+        <div class="f"><label>契約種別</label><select id="keiyaku"><option>従量電灯B</option><option>従量電灯C</option><option>低圧電力</option></select></div>
+        <div class="f"><label>契約容量</label><select id="amp"><option value="">選択</option><option>15A</option><option>20A</option><option>30A</option><option>40A</option><option>50A</option><option>60A</option><option>6kVA</option><option>8kVA</option><option>10kVA</option><option>12kVA</option><option>15kVA</option></select></div>
       </div>
-
-      <div class="section">
-        <div class="section-title">⚡ 契約・引込</div>
-        <div class="card">
-          <div class="grid2">
-            <div class="f"><label>契約種別</label><select id="keiyaku"><option>従量電灯B</option><option>従量電灯C</option><option selected>従量電灯C＋低圧電力</option><option>低圧電力</option></select></div>
-            <div class="f"><label>契約容量</label><select id="amp"><option value="">選択</option><option>30A</option><option>40A</option><option>50A</option><option selected>60A</option><option>6kVA</option><option>8kVA</option><option>10kVA</option><option>12kVA</option><option>15kVA</option></select></div>
-          </div>
-          <div class="f"><label>引込線</label><div class="grid2"><select id="dv"><option>DV2線</option><option selected>DV3線</option></select><select id="sz"><option>3.2mm</option><option selected>14mm²</option><option>22mm²</option><option>38mm²</option></select></div></div>
-          <div class="grid2">
-            <div class="f"><label>引込柱</label><input id="hikikomi_basho" placeholder="名取12R7"></div>
-            <div class="f"><label>トランス柱</label><input id="trans_basho" placeholder="名取15"></div>
-          </div>
-        </div>
+      <div class="f"><label>引込線</label><div class="grid2"><select id="dv"><option>DV2線</option><option selected>DV3線</option></select><select id="sz"><option>3.2mm</option><option>14mm²</option><option>22mm²</option><option>38mm²</option><option>60mm²</option></select></div></div>
+      <div class="grid2">
+        <div class="f"><label>引込柱番号</label><input id="hikikomi_basho" placeholder="名取12"></div>
+        <div class="f"><label>トランス柱番号</label><input id="trans_basho" placeholder="名取15"></div>
       </div>
-
-      <div class="section">
-        <div class="section-title">🔧 設備情報</div>
-        <div class="card">
-          <div class="grid2">
-            <div class="f"><label>Tr 1容量</label><select id="trans_cap1"><option value="">-</option><option>10kVA</option><option>15kVA</option><option>20kVA</option><option>30kVA</option><option>50kVA</option><option>75kVA</option></select></div>
-            <div class="f"><label>Tr 2容量</label><select id="trans_cap2"><option value="">-</option><option>10kVA</option><option>15kVA</option><option>20kVA</option><option>30kVA</option><option>50kVA</option><option>75kVA</option></select></div>
-          </div>
-          <div class="f"><label>区分</label><div class="pill-group"><div class="pill" data-p="h1">二類</div><div class="pill" data-p="h2">三類</div><div class="pill" data-p="h3">空中分岐</div><div class="pill" data-p="h4">地中</div></div></div>
-          <div class="f"><label>メーター</label><div class="r"><label><input type="radio" name="m" value="ベージュ" checked>ベージュ</label><label><input type="radio" name="m" value="グレー">グレー</label><label><input type="radio" name="m" value="スマート">スマート</label></div></div>
-          <div class="f"><label>主要設備</label><div class="chk"><label><input type="checkbox" id="e1">☀️ 太陽光</label><label><input type="checkbox" id="e2">♨️ エコキュート</label><label><input type="checkbox" id="e3">🍳 IH</label><label><input type="checkbox" id="e4">🚗 EV</label><label><input type="checkbox" id="e5">🔋 蓄電池</label><label><input type="checkbox" id="e6">🏠 全電化</label></div></div>
-        </div>
+      <div class="grid2">
+        <div class="f"><label>トランス1</label><select id="trans_cap1"><option value="">-</option><option>5kVA</option><option>10kVA</option><option>15kVA</option><option>20kVA</option><option>25kVA</option><option>30kVA</option><option>40kVA</option><option>50kVA</option><option>60kVA</option><option>75kVA</option></select></div>
+        <div class="f"><label>トランス2</label><select id="trans_cap2"><option value="">-</option><option>5kVA</option><option>10kVA</option><option>15kVA</option><option>20kVA</option><option>25kVA</option><option>30kVA</option><option>40kVA</option><option>50kVA</option><option>60kVA</option><option>75kVA</option></select></div>
       </div>
-
-      <div class="section">
-        <div class="section-title">📅 工程</div>
-        <div class="card">
-          <div class="grid2"><div class="f"><label>受点予定</label><input id="juten" type="date"></div><div class="f"><label>竣工検査</label><input id="kensa" type="date"></div></div>
-          <div class="f"><label>備考・特記事項</label><textarea id="biko" rows="2" placeholder="近接木あり、道路使用許可必要など"></textarea></div>
-        </div>
-      </div>
-      <div style="height:20px"></div>
+      <div class="f"><label>区分</label><div class="r"><label><input type="checkbox" id="h1">二類</label><label><input type="checkbox" id="h2">三類</label><label><input type="checkbox" id="h3">空中分岐</label></div></div>
+      <div class="f"><label>メーター</label><div class="r"><label><input type="radio" name="m" value="ベージュ" checked>ベージュ</label><label><input type="radio" name="m" value="グレー">グレー</label><label><input type="radio" name="m" value="なし">なし</label></div></div>
+      <div class="f"><label>設備</label><div class="chk"><label><input type="checkbox" id="e1">☀️ 太陽光</label><label><input type="checkbox" id="e2">♨️ エコキュート</label><label><input type="checkbox" id="e3">🍳 IH</label><label><input type="checkbox" id="e4">🚗 EV充電</label><label><input type="checkbox" id="e5">🔋 蓄電池</label><label><input type="checkbox" id="e6">🏠 オール電化</label></div></div>
+      <div class="grid2"><div class="f"><label>受点予定</label><input id="juten" type="date"></div><div class="f"><label>検査日</label><input id="kensa" type="date"></div></div>
+      <div class="f"><label>備考</label><textarea id="biko" rows="2" placeholder="特記事項"></textarea></div>
     </div>
   </div>
-  
   <div class="mapw">
     <div id="map"></div>
-    <button class="fab" id="fab" type="button" aria-label="メニュー">☰</button>
-    <div class="map-controls">
-      <button class="map-btn" id="fit" type="button" title="全体表示">⌖</button>
-      <button class="map-btn" id="clearMap" type="button" title="全消去">🗑️</button>
-    </div>
+    <button class="fab" id="fab" type="button">☰</button>
     <div class="tools" id="tools">
-      <button class="tool-btn" data-t="pole" type="button"><span class="icon">⚫</span>電柱</button>
-      <button class="tool-btn" data-t="trans" type="button"><span class="icon">🔴</span>Tr</button>
-      <button class="tool-btn" data-t="line" type="button"><span class="icon">〰️</span>低圧</button>
-      <button class="tool-btn" data-t="hikikomi" type="button"><span class="icon">↘️</span>引込</button>
-      <button class="tool-btn" data-t="bunki" type="button"><span class="icon">🔀</span>分岐</button>
-      <button class="tool-btn" data-t="bld" type="button"><span class="icon">⬜</span>建物</button>
-      <button class="tool-btn" data-t="bldf" type="button"><span class="icon">⬡</span>自由</button>
-      <button class="tool-btn" data-t="text" type="button"><span class="icon">📝</span>文字</button>
-      <button class="tool-btn" data-t="edit" type="button"><span class="icon">✏️</span>編集</button>
+      <button data-t="pole" type="button">⚫<span>電柱</span></button>
+      <button data-t="trans" type="button">🔴<span>トランス</span></button>
+      <button data-t="line" type="button">〰️<span>低圧</span></button>
+      <button data-t="hikikomi" type="button">↘️<span>引込</span></button>
+      <button data-t="bunki" type="button">🔀<span>分岐</span></button>
+      <button data-t="bld" type="button">⬜<span>建物</span></button>
+      <button data-t="bldf" type="button">⬡<span>自由</span></button>
+      <button data-t="text" type="button">📝<span>文字</span></button>
+      <button data-t="edit" type="button">✏️<span>編集</span></button>
     </div>
-    <div class="hint" id="hint">ツールを選択して地図をタップ</div>
+    <div class="hint" id="hint">ツール選択→地図タップ</div>
   </div>
 </div>
-
 <div class="modal" id="modal"><div class="modal-box"><h3 id="mtitle">入力</h3><div id="mbody"></div><div class="modal-btns"><button class="modal-cancel" id="mcancel" type="button">キャンセル</button><button class="modal-ok" id="mok" type="button">OK</button></div></div></div>
-<div class="toast" id="toast"><span id="toastIcon">✓</span><span id="toastTxt">保存しました</span></div>
-
 <script>
 !function(){
   const $=id=>document.getElementById(id);
-  const hint=$('hint'), modal=$('modal'), mbody=$('mbody'), sb=$('sb'), toast=$('toast');
+  const hint=$('hint'), modal=$('modal'), mbody=$('mbody'), sb=$('sb');
   let mResolve=null;
-  const geoCache = (()=>{try{return JSON.parse(localStorage.getItem('geoCache41')||'{}')}catch(e){return {}}})();
-  const saveGeoCache = ()=>{try{localStorage.setItem('geoCache41', JSON.stringify(geoCache))}catch(e){}};
+  const geoCache = (()=>{try{return JSON.parse(localStorage.getItem('geoCache')||'{}')}catch(e){return {}}})();
+  const saveGeoCache = ()=>{try{localStorage.setItem('geoCache', JSON.stringify(geoCache))}catch(e){}};
   
   function showModal(title,html){$('mtitle').textContent=title;mbody.innerHTML=html;modal.classList.add('show');return new Promise(r=>{mResolve=r})}
   $('mok').onclick=()=>{if(mResolve){const data={};mbody.querySelectorAll('input,select,textarea').forEach(el=>{if(el.type==='radio'){if(el.checked)data[el.name]=el.value;return}const key=el.id||el.name;if(!key)return;data[key]=el.value});mResolve(data)}modal.classList.remove('show');mResolve=null};
   $('mcancel').onclick=()=>{modal.classList.remove('show');if(mResolve)mResolve(null);mResolve=null};
   
-  const showHint=t=>{hint.textContent=t;hint.classList.add('show');clearTimeout(showHint._t);showHint._t=setTimeout(()=>hint.classList.remove('show'),2200)};
-  const showToast=(txt,icon='✓')=>{$('toastTxt').textContent=txt;$('toastIcon').textContent=icon;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2000)};
+  const show=t=>{hint.textContent=t;hint.classList.add('show');clearTimeout(show._t);show._t=setTimeout(()=>hint.classList.remove('show'),2300)};
   const vib=p=>{try{if(navigator.vibrate)navigator.vibrate(p||10)}catch(e){}};
-  const getR=n=>document.querySelector('input[name="'+n+'"]:checked')?.value||'';
-  const setR=(n,v)=>{document.querySelectorAll('input[name="'+n+'"]').forEach(e=>e.checked=false);if(v){const e=document.querySelector('input[name="'+n+'"][value="'+v+'"]');if(e)e.checked=true}};
+  const getR=n=>document.querySelector(`input[name="${n}"]:checked`)?.value||'';
+  const setR=(n,v)=>{document.querySelectorAll(`input[name="${n}"]`).forEach(e=>e.checked=false);if(v){const e=document.querySelector(`input[name="${n}"][value="${v}"]`);if(e)e.checked=true}};
   
-  // Pill toggles
-  document.querySelectorAll('.pill').forEach(p=>p.onclick=()=>p.classList.toggle('active'));
-  
-  const map=L.map('map',{zoomControl:false,preferCanvas:true,attributionControl:false}).setView([38.172,140.882],18);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:21,attribution:'©OSM ©CARTO'}).addTo(map);
+  const map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([38.172,140.882],18);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:21,attribution:'©OSM'}).addTo(map);
   L.control.zoom({position:'bottomright'}).addTo(map);
-  L.control.attribution({position:'bottomleft',prefix:false}).addTo(map).setPrefix('© OpenStreetMap');
   const layerGroup=L.layerGroup().addTo(map);
-  let gpsMarker=null;
   
-  if(window.ResizeObserver){new ResizeObserver(()=>map.invalidateSize()).observe($('map'))}
+  if(window.ResizeObserver){new ResizeObserver(()=>map.invalidateSize()).observe(document.getElementById('map'))}
+  map.whenReady(()=>{setTimeout(()=>map.invalidateSize(),400)});
   
   const state={tool:null,objs:[],undo:[],tmp:[],last:0};
   
-  function toggleSidebar(hide){
-    const isHide = hide!==undefined?hide:!sb.classList.contains('hide');
-    sb.classList.toggle('hide',isHide);
-    $('fab').classList.toggle('show',isHide);
-    setTimeout(()=>map.invalidateSize(),320);
-  }
-  $('tg').onclick = ()=>toggleSidebar(true);
-  $('fab').onclick = ()=>toggleSidebar(false);
-  if(window.innerWidth<=1024) toggleSidebar(true);
-  
-  // Swipe to expand on mobile
-  let startY=0, startH=0;
-  const headEl = document.querySelector('.head');
-  headEl.addEventListener('touchstart',e=>{startY=e.touches[0].clientY;startH=sb.offsetHeight},{passive:true});
-  headEl.addEventListener('touchmove',e=>{if(window.innerWidth>768)return;const dy=startY-e.touches[0].clientY;if(dy>30){sb.style.height='92vh'}},{passive:true});
-  headEl.addEventListener('touchend',e=>{const dy=startY-e.changedTouches[0].clientY;sb.style.height='';if(window.innerWidth<=768 && Math.abs(dy)>60){if(dy>0){sb.classList.add('expanded')}else{sb.classList.remove('expanded')}}setTimeout(()=>map.invalidateSize(),200)});
+  $('tg').onclick=()=>{
+    sb.classList.toggle('hide');
+    $('tg').textContent = sb.classList.contains('hide') ? '☰' : '✕';
+    setTimeout(()=>map.invalidateSize(),360);
+  };
+  $('fab').onclick=()=>{
+    sb.classList.remove('hide');
+    $('tg').textContent='✕';
+    setTimeout(()=>map.invalidateSize(),360);
+  };
   
   function pushHistory(){
     const snap = JSON.stringify(state.objs.map(o=>({t:o.t,d:o.d,id:o.id})));
-    if(state.undo[state.undo.length-1] !== snap){state.undo.push(snap);if(state.undo.length>40)state.undo.shift()}
+    if(state.undo[state.undo.length-1] !== snap){ state.undo.push(snap); if(state.undo.length>40) state.undo.shift(); }
   }
   
   function add(t,d){pushHistory();const o={t,id:'o'+Date.now().toString(36)+Math.random().toString(36).slice(2),d:JSON.parse(JSON.stringify(d))};state.objs.push(o);render(o);requestSave();vib(10);return o}
@@ -482,78 +386,77 @@ button{cursor:pointer;touch-action:manipulation}
     const d=o.d;
     if(!o._group){o._group=L.layerGroup();layerGroup.addLayer(o._group)}else{o._group.clearLayers()}
     if(o.t==='pole'){
-      const m=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:'<div class="marker-pole">'+(d.no||'').slice(-2)+'</div>',iconSize:[30,30],iconAnchor:[15,15]})});
+      const m=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:`<div class="marker-pole">${(d.no||'').slice(-2)}</div>`,iconSize:[30,30],iconAnchor:[15,15]})});
       m.on('click',()=>editObj(o));o._group.addLayer(m);
-      if(d.no){const l=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:'<div class="marker-label">'+d.no+'</div>'}),interactive:true});l.on('click',()=>editObj(o));o._group.addLayer(l)}
+      if(d.no){const l=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:`<div class="marker-label">${d.no}</div>`}),interactive:true});l.on('click',()=>editObj(o));o._group.addLayer(l)}
     }else if(o.t==='trans'){
-      const cap=d.cap?d.cap.replace('kVA',''):'';const m=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:'<div class="marker-trans">'+cap+'</div>',iconSize:[32,32],iconAnchor:[16,16]})});m.on('click',()=>editObj(o));o._group.addLayer(m);
-      const label=[d.no,d.cap].filter(Boolean).join(' ');if(label){const l=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:'<div class="marker-label red">'+label+'</div>'}),interactive:true});l.on('click',()=>editObj(o));o._group.addLayer(l)}
+      const cap=d.cap?d.cap.replace('kVA',''):'';const m=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:`<div class="marker-trans">${cap}</div>`,iconSize:[32,32],iconAnchor:[16,16]})});m.on('click',()=>editObj(o));o._group.addLayer(m);
+      const label=[d.no,d.cap].filter(Boolean).join(' ');if(label){const l=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:`<div class="marker-label red">${label}</div>`}),interactive:true});l.on('click',()=>editObj(o));o._group.addLayer(l)}
     }else if(o.t==='line'||o.t==='hikikomi'||o.t==='bunki'){
-      const opt={color:o.t==='line'?'#0f172a':'#dc2626',weight:o.t==='hikikomi'?5:4,opacity:0.95,lineCap:'round',lineJoin:'round'};if(o.t==='bunki')opt.dashArray='8,10';
+      const opt={color:o.t==='line'?'#0f172a':'#dc2626',weight:5,opacity:0.95,lineCap:'round'};if(o.t==='bunki')opt.dashArray='8,10';
       const pl=L.polyline([[d.p1.lat,d.p1.lng],[d.p2.lat,d.p2.lng]],opt);pl.on('click',()=>editLength(o));o._group.addLayer(pl);
       const dist=d.dist||map.distance(d.p1,d.p2).toFixed(1);const mid=[(d.p1.lat+d.p2.lat)/2,(d.p1.lng+d.p2.lng)/2];
-      const lm=L.marker(mid,{icon:L.divIcon({className:'',html:'<div class="marker-label red">'+dist+'m</div>'}),interactive:true});lm.on('click',()=>editLength(o));o._group.addLayer(lm);
+      const lm=L.marker(mid,{icon:L.divIcon({className:'',html:`<div class="marker-label red">${dist}m</div>`}),interactive:true});lm.on('click',()=>editLength(o));o._group.addLayer(lm);
     }else if(o.t==='bld'||o.t==='bldf'){
-      o._group.addLayer(L.polygon(d.ps.map(p=>[p.lat,p.lng]),{color:o.t==='bldf'?'#3b82f6':'#dc2626',weight:3,fillOpacity:0.12,lineJoin:'round'}));
+      o._group.addLayer(L.polygon(d.ps.map(p=>[p.lat,p.lng]),{color:o.t==='bldf'?'#2563eb':'#dc2626',weight:3,fillOpacity:0.12}));
     }else if(o.t==='text'){
-      const tm=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:'<div class="text-lab">'+d.text+'</div>'}),interactive:true});tm.on('click',()=>editText(o));o._group.addLayer(tm);
+      const tm=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:`<div class="text-lab">${d.text}</div>`}),interactive:true});tm.on('click',()=>editText(o));o._group.addLayer(tm);
     }
   }
   
-  async function editObj(o){if(state.tool!=='edit')return;pushHistory();if(o.t==='pole'){const r=await showModal('⚫ 電柱編集','<div class="row"><label>柱番号</label><input id="no" name="no" value="'+(o.d.no||'')+'" placeholder="例）名取12R7"></div>');if(r){o.d.no=r.no;render(o);requestSave();showToast('電柱を更新')}}else if(o.t==='trans'){const caps=['','10kVA','15kVA','20kVA','30kVA','50kVA','75kVA','100kVA'];const r=await showModal('🔴 トランス編集','<div class="row"><label>柱番号</label><input id="no" name="no" value="'+(o.d.no||'')+'"></div><div class="row"><label>容量</label><select id="cap" name="cap">'+caps.map(v=>'<option '+(o.d.cap===v?'selected':'')+'>'+(v||'-')+'</option>').join('')+'</select></div>');if(r){o.d.no=r.no;o.d.cap=r.cap;render(o);requestSave();showToast('トランスを更新')}}}
-  async function editLength(o){if(state.tool!=='edit')return;pushHistory();const cur=o.d.dist||map.distance(o.d.p1,o.d.p2).toFixed(1);const r=await showModal('📏 長さ修正','<div class="row"><label>距離 (m)</label><input id="dist" name="dist" type="number" step="0.1" value="'+cur+'"></div>');if(r&&r.dist){o.d.dist=parseFloat(r.dist).toFixed(1);render(o);requestSave();showToast('距離を更新')}}
-  async function editText(o){if(state.tool!=='edit')return;pushHistory();const r=await showModal('📝 文字修正','<div class="row"><label>文字</label><input id="text" name="text" value="'+o.d.text+'"></div>');if(r&&r.text){o.d.text=r.text;render(o);requestSave();showToast('文字を更新')}}
+  async function editObj(o){if(state.tool!=='edit')return;pushHistory();if(o.t==='pole'){const r=await showModal('電柱編集',`<div class="row"><label>柱番号</label><input id="no" value="${o.d.no||''}"></div>`);if(r){o.d.no=r.no;render(o);requestSave()}}else if(o.t==='trans'){const caps=['','5kVA','10kVA','15kVA','20kVA','25kVA','30kVA','40kVA','50kVA','60kVA','75kVA'];const r=await showModal('トランス編集',`<div class="row"><label>柱番号</label><input id="no" value="${o.d.no||''}"></div><div class="row"><label>容量</label><select id="cap">${caps.map(v=>`<option ${o.d.cap===v?'selected':''}>${v}</option>`).join('')}</select></div>`);if(r){o.d.no=r.no;o.d.cap=r.cap;render(o);requestSave()}}}
+  async function editLength(o){if(state.tool!=='edit')return;pushHistory();const cur=o.d.dist||map.distance(o.d.p1,o.d.p2).toFixed(1);const r=await showModal('長さ修正',`<div class="row"><label>距離 (m)</label><input id="dist" type="number" step="0.1" value="${cur}"></div>`);if(r&&r.dist){o.d.dist=parseFloat(r.dist).toFixed(1);render(o);requestSave()}}
+  async function editText(o){if(state.tool!=='edit')return;pushHistory();const r=await showModal('文字修正',`<div class="row"><label>文字</label><input id="text" value="${o.d.text}"></div>`);if(r&&r.text){o.d.text=r.text;render(o);requestSave()}}
   
   function clearAll(){layerGroup.clearLayers();state.objs.forEach(o=>o._group=null);state.objs=[]}
   
-  map.on('click',async e=>{if(!state.tool||state.tool==='edit')return;const now=Date.now();if(now-state.last<150)return;state.last=now;const ll=e.latlng;
-    if(state.tool==='pole'){const r=await showModal('⚫ 電柱配置','<div class="row"><label>柱番号</label><input id="no" name="no" value="'+($('hikikomi_basho').value||'')+'" placeholder="名取12R7"></div>');if(!r)return;add('pole',{lat:ll.lat,lng:ll.lng,no:r.no});showToast('電柱を配置','⚫')}
-    else if(state.tool==='trans'){const caps=['','10kVA','15kVA','20kVA','30kVA','50kVA','75kVA'];const r=await showModal('🔴 トランス配置','<div class="row"><label>柱番号</label><input id="no" name="no" value="'+($('trans_basho').value||'')+'"></div><div class="row"><label>容量</label><select id="cap" name="cap">'+caps.map(v=>'<option>'+v+'</option>').join('')+'</select></div>');if(!r)return;add('trans',{lat:ll.lat,lng:ll.lng,no:r.no,cap:r.cap});showToast('トランス配置','🔴')}
-    else if(state.tool==='line'){state.tmp.push(ll);if(state.tmp.length===2){add('line',{p1:state.tmp[0],p2:state.tmp[1]});state.tmp=[];showHint('低圧線を追加')}else showHint('終点をタップ')}
-    else if(state.tool==='hikikomi'){state.tmp.push(ll);if(state.tmp.length===2){const d=map.distance(state.tmp[0],state.tmp[1]).toFixed(1);add('hikikomi',{p1:state.tmp[0],p2:state.tmp[1],dist:d});state.tmp=[];showHint('引込線 '+d+'m')}else showHint('終点をタップ')}
-    else if(state.tool==='bunki'){state.tmp.push(ll);if(state.tmp.length===2){add('bunki',{p1:state.tmp[0],p2:state.tmp[1]});state.tmp=[]}else showHint('終点')}
-    else if(state.tool==='bld'){state.tmp.push(ll);if(state.tmp.length===2){const a=state.tmp[0],b=state.tmp[1];add('bld',{ps:[{lat:a.lat,lng:a.lng},{lat:a.lat,lng:b.lng},{lat:b.lat,lng:b.lng},{lat:b.lat,lng:a.lng}]});state.tmp=[];showHint('建物を追加')}else showHint('対角をタップ')}
-    else if(state.tool==='bldf'){state.tmp.push(ll);showHint('自由形 '+state.tmp.length+'点 / 決定ボタンで完了');document.querySelector('[data-t="bldf"]').classList.toggle('ready',state.tmp.length>=3)}
-    else if(state.tool==='text'){const r=await showModal('📝 文字入力','<div class="row"><label>表示文字</label><input id="text" name="text" placeholder="例）建替 2F"></div>');if(r&&r.text){add('text',{lat:ll.lat,lng:ll.lng,text:r.text});showToast('文字追加','📝')}}
+  map.on('click',async e=>{if(!state.tool||state.tool==='edit')return;const now=Date.now();if(now-state.last<140)return;state.last=now;const ll=e.latlng;
+    if(state.tool==='pole'){const r=await showModal('電柱追加','<div class="row"><label>柱番号</label><input id="no" value="'+($('hikikomi_basho').value||'')+'" placeholder="例: 名取12"></div>');if(!r)return;add('pole',{lat:ll.lat,lng:ll.lng,no:r.no})}
+    else if(state.tool==='trans'){const caps=['','5kVA','10kVA','15kVA','20kVA','25kVA','30kVA','40kVA','50kVA','60kVA','75kVA'];const r=await showModal('トランス追加','<div class="row"><label>柱番号</label><input id="no" value="'+($('trans_basho').value||'')+'"></div><div class="row"><label>容量</label><select id="cap">'+caps.map(v=>'<option>'+v+'</option>').join('')+'</select></div>');if(!r)return;add('trans',{lat:ll.lat,lng:ll.lng,no:r.no,cap:r.cap})}
+    else if(state.tool==='line'){state.tmp.push(ll);if(state.tmp.length===2){add('line',{p1:state.tmp[0],p2:state.tmp[1]});state.tmp=[];show('低圧線を追加')}else show('終点をタップ')}
+    else if(state.tool==='hikikomi'){state.tmp.push(ll);if(state.tmp.length===2){const d=map.distance(state.tmp[0],state.tmp[1]).toFixed(1);add('hikikomi',{p1:state.tmp[0],p2:state.tmp[1],dist:d});state.tmp=[];show('引込線 '+d+'m')}else show('終点をタップ')}
+    else if(state.tool==='bunki'){state.tmp.push(ll);if(state.tmp.length===2){add('bunki',{p1:state.tmp[0],p2:state.tmp[1]});state.tmp=[]}else show('終点をタップ')}
+    else if(state.tool==='bld'){state.tmp.push(ll);if(state.tmp.length===2){const a=state.tmp[0],b=state.tmp[1];add('bld',{ps:[{lat:a.lat,lng:a.lng},{lat:a.lat,lng:b.lng},{lat:b.lat,lng:b.lng},{lat:b.lat,lng:a.lng}]});state.tmp=[]}else show('対角をタップ')}
+    else if(state.tool==='bldf'){state.tmp.push(ll);show(state.tmp.length+'点 完了は再度タップ');document.querySelector('[data-t="bldf"]').classList.toggle('ready',state.tmp.length>=3)}
+    else if(state.tool==='text'){const r=await showModal('文字追加','<div class="row"><label>文字</label><input id="text" placeholder="例: 分電盤"></div>');if(r&&r.text)add('text',{lat:ll.lat,lng:ll.lng,text:r.text})}
   });
   
-  document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click',()=>{
-    if(b.dataset.t==='bldf'&&state.tool==='bldf'&&state.tmp.length>=3){add('bldf',{ps:state.tmp.map(p=>({lat:p.lat,lng:p.lng}))});state.tmp=[];b.classList.remove('ready');showToast('自由形を確定','⬡');return}
-    state.tool=b.dataset.t;
-    if(b.dataset.t!=='bldf')state.tmp=[];
-    document.querySelectorAll('.tool-btn').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on');
-    const names={pole:'電柱を配置',trans:'トランス配置',line:'低圧線:始点→終点',hikikomi:'引込線:始点→終点',bunki:'分岐線',bld:'建物:対角2点',bldf:'自由形:多点タップ',text:'文字を配置',edit:'編集モード'};
-    showHint(names[b.dataset.t]||'');
-    vib(5);
-    if(window.innerWidth<=1024 && state.tool!=='edit') toggleSidebar(true);
-  }));
+  document.querySelectorAll('#tools button').forEach(b=>b.addEventListener('click',()=>{const t=b.dataset.t;if(t==='bldf'&&state.tool==='bldf'&&state.tmp.length>=3){add('bldf',{ps:state.tmp.map(p=>({lat:p.lat,lng:p.lng}))});state.tmp=[];b.classList.remove('ready');show('自由形状を追加');return}state.tool=t;state.tmp=[];document.querySelectorAll('#tools button').forEach(x=>x.classList.remove('on','ready'));b.classList.add('on');show(b.textContent+'モード')}));  
   
-  $('gps').onclick=async()=>{try{showToast('GPS取得中...','📍');const p=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:12000}));const lat=p.coords.latitude,lng=p.coords.longitude;map.setView([lat,lng],19);if(gpsMarker)map.removeLayer(gpsMarker);gpsMarker=L.marker([lat,lng],{icon:L.divIcon({className:'',html:'<div class="gps-dot"></div>',iconSize:[20,20],iconAnchor:[10,10]})}).addTo(map);const key=lat.toFixed(5)+','+lng.toFixed(5);if(geoCache[key]){$('jusho').value=geoCache[key];showToast('現在地取得完了','✓');return}const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+lat+'&lon='+lng+'&accept-language=ja');const d=await r.json();let addr='';if(d?.address){const a=d.address;addr=[a.state,a.city||a.town||a.village,a.suburb||a.quarter||'',a.road||'',a.house_number||''].filter(Boolean).join(' ')}geoCache[key]=addr||key;saveGeoCache();$('jusho').value=geoCache[key];showToast('住所を取得しました','✓')}catch(e){showToast('GPS取得失敗','⚠️')}};
+  $('gps').onclick=async()=>{
+    show('GPS取得中...');
+    if(!navigator.geolocation){show('GPS非対応');return}
+    try{
+      const p=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
+      const lat=p.coords.latitude,lng=p.coords.longitude;
+      map.setView([lat,lng],19);
+      L.marker([lat,lng],{icon:L.divIcon({className:'',html:`<div style="width:22px;height:22px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25)"></div>`})}).addTo(layerGroup).bindPopup('現在地').openPopup();
+      show(`現在地: ${lat.toFixed(5)}`);
+      const key=lat.toFixed(5)+','+lng.toFixed(5);
+      if(geoCache[key]){$('jusho').value=geoCache[key];return}
+      try{
+        const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=ja`);
+        const d=await r.json();let addr='';if(d?.address){const a=d.address;addr=[a.state,a.city||a.town,a.suburb||'',a.road||''].filter(Boolean).join(' ')}
+        if(!addr)addr=`${lat.toFixed(5)},${lng.toFixed(5)}`;geoCache[key]=addr;saveGeoCache();$('jusho').value=addr;
+      }catch(e){$('jusho').value=`${lat.toFixed(5)},${lng.toFixed(5)}`}
+    }catch(e){show('GPS失敗: 位置情報を許可してください')}
+  };
   
   let saveTimer=null;
-  function doSave(){try{const c=map.getCenter();const pills=[...document.querySelectorAll('.pill.active')].map(p=>p.dataset.p);const d={v:'41',f:{genba:$('genba').value,jusho:$('jusho').value,koji:getR('k'),kyokyu:$('kyokyu').value,keiyaku:$('keiyaku').value,amp:$('amp').value,dv:$('dv').value,sz:$('sz').value,hikikomi_basho:$('hikikomi_basho').value,trans_basho:$('trans_basho').value,trans_cap1:$('trans_cap1').value,trans_cap2:$('trans_cap2').value,mbox:getR('m'),pills,eq:['e1','e2','e3','e4','e5','e6'].filter(id=>$(id).checked),juten:$('juten').value,kensa:$('kensa').value,biko:$('biko').value},o:state.objs.map(o=>({t:o.t,d:o.d,id:o.id})),c:{lat:c.lat,lng:c.lng},z:map.getZoom()};localStorage.setItem('dq41',JSON.stringify(d))}catch(e){}}
-  function requestSave(){clearTimeout(saveTimer);saveTimer=setTimeout(doSave,600)}
+  function doSave(){try{const c=map.getCenter();const d={v:'40',f:{genba:$('genba').value,jusho:$('jusho').value,koji:getR('k'),kyokyu:$('kyokyu').value,keiyaku:$('keiyaku').value,amp:$('amp').value,dv:$('dv').value,sz:$('sz').value,hikikomi_basho:$('hikikomi_basho').value,trans_basho:$('trans_basho').value,trans_cap1:$('trans_cap1').value,trans_cap2:$('trans_cap2').value,mbox:getR('m'),hk:['h1','h2','h3'].filter(id=>$(id).checked),eq:['e1','e2','e3','e4','e5','e6'].filter(id=>$(id).checked),juten:$('juten').value,kensa:$('kensa').value,biko:$('biko').value},o:state.objs.map(o=>({t:o.t,d:o.d,id:o.id})),c:{lat:c.lat,lng:c.lng},z:map.getZoom()};localStorage.setItem('dq40',JSON.stringify(d));show('保存しました')}catch(e){}}
+  function requestSave(){clearTimeout(saveTimer);saveTimer=setTimeout(doSave,700)}
   
-  function load(){try{const s=localStorage.getItem('dq41')||localStorage.getItem('dq40');if(!s){showToast('保存データなし','ℹ️');return;} const d=JSON.parse(s),f=d.f||{};Object.entries(f).forEach(([k,v])=>{if($(k))$(k).value=v||''});setR('k',f.koji);setR('m',f.mbox);document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('active',(f.pills||[]).includes(p.dataset.p)));['e1','e2','e3','e4','e5','e6'].forEach(id=>{if($(id))$(id).checked=(f.eq||[]).includes(id)});if(d.c)map.setView([d.c.lat,d.c.lng],d.z||18);clearAll();(d.o||[]).forEach(o=>{const no={t:o.t,d:o.d,id:o.id};state.objs.push(no);render(no)});pushHistory();showToast('データを読み込み','📂')}catch(e){showToast('読込失敗','⚠️')}}
+  function load(){try{const s=localStorage.getItem('dq40');if(!s){show('保存データなし');return}const d=JSON.parse(s),f=d.f||{};Object.entries({genba:f.genba,jusho:f.jusho,kyokyu:f.kyokyu,keiyaku:f.keiyaku,amp:f.amp,dv:f.dv,sz:f.sz,hikikomi_basho:f.hikikomi_basho,trans_basho:f.trans_basho,trans_cap1:f.trans_cap1,trans_cap2:f.trans_cap2,juten:f.juten,kensa:f.kensa,biko:f.biko}).forEach(([k,v])=>{if($(k))$(k).value=v||''});setR('k',f.koji);setR('m',f.mbox);['h1','h2','h3','e1','e2','e3','e4','e5','e6'].forEach(id=>{if($(id))$(id).checked=(f.hk||[]).concat(f.eq||[]).includes(id)});if(d.c)map.setView([d.c.lat,d.c.lng],d.z||18);clearAll();(d.o||[]).forEach(o=>{const no={t:o.t,d:o.d,id:o.id};state.objs.push(no);render(no)});pushHistory();show('読込完了')}catch(e){show('読込失敗')}}
   
-  $('save').onclick=()=>{doSave();showToast('保存しました','💾');vib(10)};
+  $('save').onclick=doSave;
   $('load').onclick=load;
-  $('undo').onclick=()=>{if(state.undo.length<2){showToast('戻る履歴なし','ℹ️');return}state.undo.pop();const prev=JSON.parse(state.undo[state.undo.length-1]||'[]');clearAll();state.objs=[];prev.forEach(o=>{const no={t:o.t,d:o.d,id:o.id};state.objs.push(no);render(no)});requestSave();showToast('1つ戻しました','↩️')};
-  $('clearMap').onclick=()=>{if(confirm('地図上の作図を全て削除しますか？')){pushHistory();clearAll();pushHistory();requestSave();showToast('全削除しました','🗑️')}};
-  $('fit').onclick=()=>{if(state.objs.length===0){map.setView([38.172,140.882],18);return}const b=L.latLngBounds([]);state.objs.forEach(o=>{if(o.d.lat)b.extend([o.d.lat,o.d.lng]);if(o.d.p1)b.extend([o.d.p1.lat,o.d.p1.lng]),b.extend([o.d.p2.lat,o.d.p2.lng]);if(o.d.ps)o.d.ps.forEach(p=>b.extend([p.lat,p.lng]))});if(b.isValid())map.fitBounds(b.pad(0.2))};
-  $('image').onclick=()=>{showToast('画像出力は画面キャプチャをご利用ください','🖼️')};
-  $('share').onclick=async()=>{doSave();const data=localStorage.getItem('dq41');try{if(navigator.share){await navigator.share({title:'電力申請データ',text:$('genba').value||'電力申請',url:location.href})}else{await navigator.clipboard.writeText(data.slice(0,2000));showToast('データをコピー','📋')}}catch(e){}};
+  $('undo').onclick=()=>{if(state.undo.length<2){show('戻せません');return}state.undo.pop();const prev=JSON.parse(state.undo[state.undo.length-1]||'[]');clearAll();state.objs=[];prev.forEach(o=>{const no={t:o.t,d:o.d,id:o.id};state.objs.push(no);render(no)});requestSave();show('1つ戻しました')};
+  $('clear').onclick=()=>{if(confirm('全ての作図を削除しますか？')){pushHistory();clearAll();pushHistory();requestSave();show('全削除')}};
+  $('share').onclick=async()=>{doSave();const data=localStorage.getItem('dq40');try{if(navigator.share){await navigator.share({title:$('genba').value||'電力申請',text:$('jusho').value||''})}else{await navigator.clipboard.writeText(data);show('データをコピーしました')}}catch(e){}};
   
-  document.querySelectorAll('input,select,textarea').forEach(e=>e.addEventListener('change',requestSave));
-  document.querySelectorAll('input,textarea').forEach(e=>e.addEventListener('input',()=>{clearTimeout(saveTimer);saveTimer=setTimeout(requestSave,1200)}));
-  
-  // 初期化
-  setTimeout(()=>{load();pushHistory();showHint('始めにGPS→現場名を入力→ツール選択');if(window.innerWidth>1024)$('fab').classList.remove('show')},400);
-  setInterval(doSave,45000);
-  
-  // PWA風(status bar)
-  if('serviceWorker' in navigator){/* placeholder */}
+  document.querySelectorAll('input,select,textarea').forEach(e=>e.addEventListener('input',requestSave));
+  setInterval(doSave,60000);
+  window.addEventListener('load',()=>setTimeout(()=>{map.invalidateSize();load();if(!localStorage.getItem('dq40'))show('地図をタップして作図開始')},700));
 }();
 </script>
 </body>
