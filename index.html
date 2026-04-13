@@ -3,51 +3,201 @@
 <head>
 <!-- Playables SDK -->
 <script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
 (function() {
   'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
   if (window.playablesSDK) return;
+
   var HANDLER_NAME = 'playablesGameEventHandler';
   var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
   var RAF_FRAME_THRESHOLD = 3;
-  var gameReadySent = false, firstInteractionSent = false, errorSent = false, frameCount = 0;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
   var originalRAF = window.requestAnimationFrame;
-  function hasIOSBridge(){return !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[HANDLER_NAME]);}
-  function hasAndroidBridge(){return !!(window[ANDROID_BRIDGE_NAME] && typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');}
-  function isInIframe(){return !!(window.parent && window.parent !== window);}
-  function sendEvent(eventName, payload){
-    var message = {type: eventName, payload: payload || {}, timestamp: Date.now()};
-    if (hasIOSBridge()) {try{window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);}catch(e){} return;}
-    if (hasAndroidBridge()) {try{var p = payload || {}; p.__secureToken = window.__fbAndroidBridgeAuthToken || ''; window[ANDROID_BRIDGE_NAME].postEvent(eventName, JSON.stringify(p));}catch(e){} return;}
-    if (isInIframe()) {try{window.parent.postMessage(message, '*');}catch(e){} return;}
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
   }
-  function onFrame(){ if(gameReadySent) return; frameCount++; if(frameCount>=RAF_FRAME_THRESHOLD){gameReadySent=true; sendEvent('game_ready',{frame_count:frameCount,detected_at:Date.now()}); return;} originalRAF.call(window,onFrame); }
-  if(originalRAF){
-    window.requestAnimationFrame = function(callback){
-      if(!gameReadySent){
-        return originalRAF.call(window,function(ts){ frameCount++; if(frameCount>=RAF_FRAME_THRESHOLD && !gameReadySent){gameReadySent=true; sendEvent('game_ready',{frame_count:frameCount,detected_at:Date.now()});} callback(ts); });
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
       }
-      return originalRAF.call(window,callback);
+      return originalRAF.call(window, callback);
     };
   }
-  function setupFirstInteractionDetection(){
-    var events=['touchstart','mousedown','keydown'];
-    function onFirstInteraction(){ if(firstInteractionSent) return; firstInteractionSent=true; sendEvent('user_interaction_start',null); events.forEach(ev=>document.removeEventListener(ev,onFirstInteraction,true)); }
-    events.forEach(ev=>document.addEventListener(ev,onFirstInteraction,true));
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
   }
-  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',setupFirstInteractionDetection);} else {setupFirstInteractionDetection();}
-  window.addEventListener('error',function(e){ if(errorSent) return; errorSent=true; sendEvent('error',{message:e.message||'Unknown',source:e.filename||'',lineno:e.lineno||0,colno:e.colno||0,auto_captured:true}); });
-  window.addEventListener('unhandledrejection',function(e){ if(errorSent) return; errorSent=true; var r=e.reason; sendEvent('error',{message:(r instanceof Error)?r.message:String(r),type:'unhandled_promise_rejection',auto_captured:true}); });
-  window.playablesSDK={ complete:function(s){sendEvent('game_ended',{score:s,completed:true});}, error:function(m){if(errorSent)return; errorSent=true; sendEvent('error',{message:m||'Unknown',auto_captured:false});}, sendEvent:sendEvent };
-  if(originalRAF){ originalRAF.call(window,onFrame); }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
 })();</script>
 <script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
 <meta charset="UTF-8">
-<title>電力申請 v40.1</title>
+<title>電力申請 v40.4</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="color-scheme" content="light only">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root{color-scheme:light;--pri:#2563eb;--pri2:#1e3a8a;--ink:#0f172a;--mut:#64748b;--bd:#e2e8f0;--bg:#f8fafc}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -55,6 +205,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 @media (prefers-color-scheme:dark){html,body{background:#f8fafc!important;color:#0f172a!important}input,select,textarea{background:#fff!important;color:#000!important}}
 button,input,select,textarea{font-family:inherit;font-size:16px;outline:none}
 button{cursor:pointer;user-select:none;touch-action:manipulation}
+#error{position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:8px 10px;font-size:12px;z-index:99999;display:none;white-space:pre-wrap}
 .app{display:flex;height:100vh;height:100dvh;width:100vw;position:relative}
 .sidebar{width:360px;min-width:320px;background:rgba(255,255,255,.94);backdrop-filter:saturate(180%) blur(20px);display:flex;flex-direction:column;z-index:1000;box-shadow:0 0 0 1px rgba(0,0,0,.04),0 20px 40px -12px rgba(0,0,0,.25);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
 .sidebar.hide{transform:translateX(-100%)}
@@ -93,6 +244,7 @@ button{cursor:pointer;user-select:none;touch-action:manipulation}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .mapw{flex:1;position:relative;background:#cbd5e1;overflow:hidden}
 #map{position:absolute;inset:0;width:100%;height:100%;background:#e2e8f0}
+#map.paint-cursor{cursor:crosshair !important}
 .tools{position:absolute;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:1100;background:rgba(255,255,255,.88);backdrop-filter:blur(16px) saturate(180%);padding:8px;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.22),0 0 0 1px rgba(0,0,0,.04);display:flex;gap:6px;max-width:calc(100% - 20px);overflow-x:auto;scrollbar-width:none}
 .tools::-webkit-scrollbar{display:none}
 .tools button{height:60px;min-width:70px;padding:6px 10px;background:#f1f5f9;border:2px solid transparent;border-radius:14px;font-size:11px;font-weight:700;color:#334155;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:.18s;position:relative;white-space:nowrap}
@@ -130,11 +282,12 @@ button{cursor:pointer;user-select:none;touch-action:manipulation}
 </style>
 </head>
 <body>
+<div id="error"></div>
 <div class="app">
   <div class="sidebar" id="sb">
     <div class="drag"></div>
     <div class="head">
-      <div class="top"><h1>⚡ 電力申請 v40.1</h1><button class="tg" id="tg" type="button">✕</button></div>
+      <div class="top"><h1>⚡ 電力申請 v40.4</h1><button class="tg" id="tg" type="button">✕</button></div>
       <div class="btns">
         <button id="gps" type="button">📍 GPS</button>
         <button id="save" type="button">💾 保存</button>
@@ -188,6 +341,7 @@ button{cursor:pointer;user-select:none;touch-action:manipulation}
 </div>
 <div class="modal" id="modal"><div class="modal-box"><h3 id="mtitle">入力</h3><div id="mbody"></div><div class="modal-btns"><button class="modal-cancel" id="mcancel" type="button">キャンセル</button><button class="modal-ok" id="mok" type="button">OK</button></div></div></div>
 <script>
+window.onerror=function(m,s,l,c,e){const er=document.getElementById('error');er.style.display='block';er.textContent='エラー: '+m+' ('+l+')';};
 !function(){
   const $=id=>document.getElementById(id);
   const hint=$('hint'), modal=$('modal'), mbody=$('mbody'), sb=$('sb');
@@ -195,11 +349,11 @@ button{cursor:pointer;user-select:none;touch-action:manipulation}
   const geoCache = (()=>{try{return JSON.parse(localStorage.getItem('geoCache')||'{}')}catch(e){return {}}})();
   const saveGeoCache = ()=>{try{localStorage.setItem('geoCache', JSON.stringify(geoCache))}catch(e){}};
   
-  function showModal(title,html){$('mtitle').textContent=title;mbody.innerHTML=html;modal.classList.add('show');setTimeout(()=>{const first=mbody.querySelector('input,select,textarea');if(first)first.focus();},50);return new Promise(r=>{mResolve=r})}
+  function showModal(title,html){$('mtitle').textContent=title;mbody.innerHTML=html;modal.classList.add('show');setTimeout(()=>mbody.querySelector('input,select,textarea')?.focus(),50);return new Promise(r=>{mResolve=r})}
   $('mok').onclick=()=>{if(mResolve){const data={};mbody.querySelectorAll('input,select,textarea').forEach(el=>{if(el.type==='radio'){if(el.checked)data[el.name]=el.value;return}const key=el.id||el.name;if(!key)return;data[key]=el.value});mResolve(data)}modal.classList.remove('show');mResolve=null};
   $('mcancel').onclick=()=>{modal.classList.remove('show');if(mResolve)mResolve(null);mResolve=null};
-  modal.addEventListener('click',e=>{if(e.target===modal){$('mcancel').click();}});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('show')){$('mcancel').click();}});
+  modal.addEventListener('click',e=>{if(e.target===modal)$('mcancel').click()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('show'))$('mcancel').click()});
   
   const show=t=>{hint.textContent=t;hint.classList.add('show');clearTimeout(show._t);show._t=setTimeout(()=>hint.classList.remove('show'),2300)};
   const vib=p=>{try{if(navigator.vibrate)navigator.vibrate(p||10)}catch(e){}};
@@ -230,10 +384,12 @@ button{cursor:pointer;user-select:none;touch-action:manipulation}
   };
   
   function pushHistory(){
-    const snap = JSON.stringify(state.objs.map(o=>({t:o.t,d:o.d,id:o.id})));
-    if(state.undo[state.undo.length-1] !== snap){ state.undo.push(snap); if(state.undo.length>40) state.undo.shift(); }
+    try{
+      const snap = JSON.stringify(state.objs.map(o=>({t:o.t,d:o.d,id:o.id})));
+      if(state.undo[state.undo.length-1] !== snap){ state.undo.push(snap); if(state.undo.length>40) state.undo.shift(); }
+    }catch(e){}
   }
-  pushHistory(); // 初期状態
+  pushHistory();
   
   function add(t,d){pushHistory();const o={t,id:'o'+Date.now().toString(36)+Math.random().toString(36).slice(2),d:JSON.parse(JSON.stringify(d))};state.objs.push(o);render(o);requestSave();vib(10);return o}
   
@@ -263,30 +419,26 @@ button{cursor:pointer;user-select:none;touch-action:manipulation}
   async function editLength(o){if(state.tool!=='edit')return;pushHistory();const cur=o.d.dist||map.distance(o.d.p1,o.d.p2).toFixed(1);const r=await showModal('長さ修正',`<div class="row"><label>距離 (m)</label><input id="dist" type="number" step="0.1" value="${cur}"></div>`);if(r&&r.dist){o.d.dist=parseFloat(r.dist).toFixed(1);render(o);requestSave()}}
   async function editText(o){if(state.tool!=='edit')return;pushHistory();const r=await showModal('文字修正',`<div class="row"><label>文字</label><input id="text" value="${o.d.text}"></div>`);if(r&&r.text){o.d.text=r.text;render(o);requestSave()}}
   
-  function clearAll(){layerGroup.clearLayers();state.objs.forEach(o=>o._group=null);state.objs=[]}
+  function clearAll(){layerGroup.clearLayers();state.objs.forEach(o=>o._group=null);state.objs=[];state.tmp=[];layerGroup.eachLayer(l=>{if(l._isPreview)layerGroup.removeLayer(l)})}
   
-  map.on('click',async e=>{if(modal.classList.contains('show'))return;if(!state.tool||state.tool==='edit')return;const now=Date.now();if(now-state.last<140)return;state.last=now;const ll=e.latlng;
+  map.on('click',async e=>{if(modal.classList.contains('show'))return;if(!state.tool||state.tool==='edit')return;const now=Date.now();if(now-state.last<80)return;state.last=now;const ll=e.latlng;
     if(state.tool==='pole'){const r=await showModal('電柱追加','<div class="row"><label>柱番号</label><input id="no" value="'+($('hikikomi_basho').value||'')+'" placeholder="例: 名取12"></div>');if(!r)return;add('pole',{lat:ll.lat,lng:ll.lng,no:r.no})}
     else if(state.tool==='trans'){const caps=['','5kVA','10kVA','15kVA','20kVA','25kVA','30kVA','40kVA','50kVA','60kVA','75kVA'];const r=await showModal('トランス追加','<div class="row"><label>柱番号</label><input id="no" value="'+($('trans_basho').value||'')+'"></div><div class="row"><label>容量</label><select id="cap">'+caps.map(v=>'<option>'+v+'</option>').join('')+'</select></div>');if(!r)return;add('trans',{lat:ll.lat,lng:ll.lng,no:r.no,cap:r.cap})}
     else if(state.tool==='line'){state.tmp.push(ll);if(state.tmp.length===2){add('line',{p1:state.tmp[0],p2:state.tmp[1]});state.tmp=[];show('低圧線を追加')}else show('終点をタップ')}
     else if(state.tool==='hikikomi'){state.tmp.push(ll);if(state.tmp.length===2){const d=map.distance(state.tmp[0],state.tmp[1]).toFixed(1);add('hikikomi',{p1:state.tmp[0],p2:state.tmp[1],dist:d});state.tmp=[];show('引込線 '+d+'m')}else show('終点をタップ')}
     else if(state.tool==='bunki'){state.tmp.push(ll);if(state.tmp.length===2){add('bunki',{p1:state.tmp[0],p2:state.tmp[1]});state.tmp=[]}else show('終点をタップ')}
     else if(state.tool==='bld'){state.tmp.push(ll);if(state.tmp.length===2){const a=state.tmp[0],b=state.tmp[1];add('bld',{ps:[{lat:a.lat,lng:a.lng},{lat:a.lat,lng:b.lng},{lat:b.lat,lng:b.lng},{lat:b.lat,lng:a.lng}]});state.tmp=[]}else show('対角をタップ')}
-    else if(state.tool==='bldf'){state.tmp.push(ll);show(state.tmp.length+'点 完了は再度タップ');document.querySelector('[data-t="bldf"]').classList.toggle('ready',state.tmp.length>=3)}
+    else if(state.tool==='bldf'){state.tmp.push(ll);layerGroup.eachLayer(l=>{if(l._isPreview)layerGroup.removeLayer(l)});if(state.tmp.length>1){L.polyline(state.tmp,{color:'#2563eb',weight:3,dashArray:'5,5',opacity:.7}).addTo(layerGroup)._isPreview=true}show(state.tmp.length+'点 完了は再度タップ');document.querySelector('[data-t="bldf"]').classList.add('ready')}
     else if(state.tool==='text'){const r=await showModal('文字追加','<div class="row"><label>文字</label><input id="text" placeholder="例: 分電盤"></div>');if(r&&r.text)add('text',{lat:ll.lat,lng:ll.lng,text:r.text})}
   });
   
   document.querySelectorAll('#tools button').forEach(b=>b.addEventListener('click',()=>{
     const t=b.dataset.t;
-    if(t==='bldf'&&state.tool==='bldf'&&state.tmp.length>=3){
-      add('bldf',{ps:state.tmp.map(p=>({lat:p.lat,lng:p.lng}))});
-      state.tmp=[]; b.classList.remove('ready'); show('自由形状を追加'); return;
-    }
-    // ツール切替時は途中データを破棄
-    if(state.tool!==t && state.tmp.length>0){ state.tmp=[]; document.querySelector('[data-t="bldf"]').classList.remove('ready'); }
-    state.tool=t; state.tmp=[];
-    document.querySelectorAll('#tools button').forEach(x=>x.classList.remove('on','ready'));
-    b.classList.add('on'); show(b.textContent+'モード');
+    if(t==='bldf'&&state.tool==='bldf'&&state.tmp.length>=3){add('bldf',{ps:state.tmp.map(p=>({lat:p.lat,lng:p.lng}))});state.tmp=[];layerGroup.eachLayer(l=>{if(l._isPreview)layerGroup.removeLayer(l)});b.classList.remove('ready');show('自由形状を追加');return}
+    if(state.tool!==t&&state.tmp.length>0){state.tmp=[];layerGroup.eachLayer(l=>{if(l._isPreview)layerGroup.removeLayer(l)});document.querySelector('[data-t="bldf"]').classList.remove('ready')}
+    state.tool = state.tool===t?null:t;
+    document.querySelectorAll('#tools button').forEach(x=>x.classList.remove('on')); 
+    if(state.tool){b.classList.add('on');$('map').classList.add('paint-cursor');show(b.querySelector('span').textContent+'モード')}else{$('map').classList.remove('paint-cursor');show('選択解除')}
   }));  
   
   $('gps').onclick=async()=>{
@@ -295,8 +447,7 @@ button{cursor:pointer;user-select:none;touch-action:manipulation}
     try{
       const p=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
       const lat=p.coords.latitude,lng=p.coords.longitude;
-      map.setView([lat,lng],19);
-      gpsLayer.clearLayers();
+      map.setView([lat,lng],19); gpsLayer.clearLayers();
       L.marker([lat,lng],{icon:L.divIcon({className:'',html:`<div style="width:22px;height:22px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25)"></div>`})}).addTo(gpsLayer).bindPopup('現在地').openPopup();
       show(`現在地: ${lat.toFixed(5)}`);
       const key=lat.toFixed(5)+','+lng.toFixed(5);
@@ -310,10 +461,10 @@ button{cursor:pointer;user-select:none;touch-action:manipulation}
   };
   
   let saveTimer=null;
-  function doSave(){try{const c=map.getCenter();const d={v:'40.1',f:{genba:$('genba').value,jusho:$('jusho').value,koji:getR('k'),kyokyu:$('kyokyu').value,keiyaku:$('keiyaku').value,amp:$('amp').value,dv:$('dv').value,sz:$('sz').value,hikikomi_basho:$('hikikomi_basho').value,trans_basho:$('trans_basho').value,trans_cap1:$('trans_cap1').value,trans_cap2:$('trans_cap2').value,mbox:getR('m'),hk:['h1','h2','h3'].filter(id=>$(id).checked),eq:['e1','e2','e3','e4','e5','e6'].filter(id=>$(id).checked),juten:$('juten').value,kensa:$('kensa').value,biko:$('biko').value},o:state.objs.map(o=>({t:o.t,d:o.d,id:o.id})),c:{lat:c.lat,lng:c.lng},z:map.getZoom()};localStorage.setItem('dq40',JSON.stringify(d));show('保存しました')}catch(e){console.warn(e);show('保存失敗: 容量超過')}} 
+  function doSave(){try{const c=map.getCenter();const d={v:'40.4',f:{genba:$('genba').value,jusho:$('jusho').value,koji:getR('k'),kyokyu:$('kyokyu').value,keiyaku:$('keiyaku').value,amp:$('amp').value,dv:$('dv').value,sz:$('sz').value,hikikomi_basho:$('hikikomi_basho').value,trans_basho:$('trans_basho').value,trans_cap1:$('trans_cap1').value,trans_cap2:$('trans_cap2').value,mbox:getR('m'),hk:['h1','h2','h3'].filter(id=>$(id).checked),eq:['e1','e2','e3','e4','e5','e6'].filter(id=>$(id).checked),juten:$('juten').value,kensa:$('kensa').value,biko:$('biko').value},o:state.objs.map(o=>({t:o.t,d:o.d,id:o.id})),c:{lat:c.lat,lng:c.lng},z:map.getZoom()};localStorage.setItem('dq40',JSON.stringify(d));show('保存しました')}catch(e){show('保存失敗')}}
   function requestSave(){clearTimeout(saveTimer);saveTimer=setTimeout(doSave,700)}
   
-  function load(){try{const s=localStorage.getItem('dq40');if(!s){show('保存データなし');return}const d=JSON.parse(s),f=d.f||{};Object.entries({genba:f.genba,jusho:f.jusho,kyokyu:f.kyokyu,keiyaku:f.keiyaku,amp:f.amp,dv:f.dv,sz:f.sz,hikikomi_basho:f.hikikomi_basho,trans_basho:f.trans_basho,trans_cap1:f.trans_cap1,trans_cap2:f.trans_cap2,juten:f.juten,kensa:f.kensa,biko:f.biko}).forEach(([k,v])=>{if($(k))$(k).value=v||''});setR('k',f.koji||'本設');setR('m',f.mbox||'ベージュ');['h1','h2','h3'].forEach(id=>{if($(id))$(id).checked=(f.hk||[]).includes(id)});['e1','e2','e3','e4','e5','e6'].forEach(id=>{if($(id))$(id).checked=(f.eq||[]).includes(id)});if(d.c)map.setView([d.c.lat,d.c.lng],d.z||18);clearAll();state.undo=[];(d.o||[]).forEach(o=>{const no={t:o.t,d:o.d,id:o.id};state.objs.push(no);render(no)});pushHistory();show('読込完了')}catch(e){console.error(e);show('読込失敗')}}
+  function load(){try{const s=localStorage.getItem('dq40');if(!s){show('保存データなし');return}const d=JSON.parse(s),f=d.f||{};['genba','jusho','kyokyu','keiyaku','amp','dv','sz','hikikomi_basho','trans_basho','trans_cap1','trans_cap2','juten','kensa','biko'].forEach(k=>{if($(k))$(k).value=f[k]||''});setR('k',f.koji||'本設');setR('m',f.mbox||'ベージュ');['h1','h2','h3'].forEach(id=>{if($(id))$(id).checked=(f.hk||[]).includes(id)});['e1','e2','e3','e4','e5','e6'].forEach(id=>{if($(id))$(id).checked=(f.eq||[]).includes(id)});if(d.c)map.setView([d.c.lat,d.c.lng],d.z||18);clearAll();state.undo=[];(d.o||[]).forEach(o=>{const no={t:o.t,d:o.d,id:o.id};state.objs.push(no);render(no)});pushHistory();show('読込完了')}catch(e){console.error(e);show('読込失敗')}}
   
   $('save').onclick=doSave;
   $('load').onclick=load;
