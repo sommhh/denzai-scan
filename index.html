@@ -1,124 +1,257 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+<script>// Playables SDK v1.0.0 (unchanged)
+(function() {
+  'use strict';
+  if (window.playablesSDK) return;
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+  var gameReadySent = false, firstInteractionSent = false, errorSent = false, frameCount = 0, originalRAF = window.requestAnimationFrame;
+  function hasIOSBridge() { return !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[HANDLER_NAME]); }
+  function hasAndroidBridge() { return !!(window[ANDROID_BRIDGE_NAME] && typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function'); }
+  function isInIframe() { return !!(window.parent && window.parent !== window); }
+  function sendEvent(eventName, payload) { var message = { type: eventName, payload: payload || {}, timestamp: Date.now() }; if (hasIOSBridge()) { try { window.webkit.messageHandlers[HANDLER_NAME].postMessage(message); } catch (e) {} return; } if (hasAndroidBridge()) { try { var p = payload || {}; p.__secureToken = window.__fbAndroidBridgeAuthToken || ''; window[ANDROID_BRIDGE_NAME].postEvent(eventName, JSON.stringify(p)); } catch (e) {} return; } if (isInIframe()) { try { window.parent.postMessage(message, '*'); } catch (e) {} return; } }
+  function onFrame() { if (gameReadySent) return; frameCount++; if (frameCount >= RAF_FRAME_THRESHOLD) { gameReadySent = true; sendEvent('game_ready', { frame_count: frameCount, detected_at: Date.now() }); return; } originalRAF.call(window, onFrame); }
+  if (originalRAF) { window.requestAnimationFrame = function(callback) { if (!gameReadySent) { return originalRAF.call(window, function(timestamp) { frameCount++; if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) { gameReadySent = true; sendEvent('game_ready', { frame_count: frameCount, detected_at: Date.now() }); } callback(timestamp); }); } return originalRAF.call(window, callback); }; }
+  function setupFirstInteractionDetection() { var events = ['touchstart', 'mousedown', 'keydown']; function onFirstInteraction() { if (firstInteractionSent) return; firstInteractionSent = true; sendEvent('user_interaction_start', null); for (var i = 0; i < events.length; i++) { document.removeEventListener(events[i], onFirstInteraction, true); } } for (var i = 0; i < events.length; i++) { document.addEventListener(events[i], onFirstInteraction, true); } }
+  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection); } else { setupFirstInteractionDetection(); }
+  window.addEventListener('error', function(event) { if (errorSent) return; errorSent = true; sendEvent('error', { message: event.message || 'Unknown error', source: event.filename || '', lineno: event.lineno || 0, colno: event.colno || 0, auto_captured: true }); });
+  window.addEventListener('unhandledrejection', function(event) { if (errorSent) return; errorSent = true; var reason = event.reason; sendEvent('error', { message: (reason instanceof Error) ? reason.message : String(reason), type: 'unhandled_promise_rejection', auto_captured: true }); });
+  window.playablesSDK = { complete: function(score) { sendEvent('game_ended', { score: score, completed: true }); }, error: function(message) { if (errorSent) return; errorSent = true; sendEvent('error', { message: message || 'Unknown error', auto_captured: false }); }, sendEvent: function(eventName, payload) { if (!eventName || typeof eventName !== 'string') return; sendEvent(eventName, payload); } };
+  if (originalRAF) { originalRAF.call(window, onFrame); }
+})();</script>
+<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>型番爆速検索</title>
-
+<title>電力申請 v40</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-body{
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
-  background:#f8f9fa;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-  margin:0;
-}
-.container{
-  width:90%;
-  max-width:400px;
-  background:#fff;
-  padding:20px;
-  border-radius:20px;
-  box-shadow:0 10px 25px rgba(0,0,0,0.1);
-  text-align:center;
-}
-input{
-  width:100%;
-  padding:12px;
-  border-radius:10px;
-  border:1px solid #ccc;
-  margin:10px 0;
-  font-size:16px;
-}
-.btn{
-  width:100%;
-  padding:14px;
-  margin:6px 0;
-  border:none;
-  border-radius:12px;
-  color:#fff;
-  font-weight:bold;
-  font-size:16px;
-}
-.lens{background:#000;}
-.manual{background:#4285f4;}
-.spec{background:#34a853;}
+:root{--bg:#f8fafc;--pri:#1e3a8a;--pri2:#2563eb;--ring:rgba(37,99,235,.3)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:#fff;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit;font-size:16px;outline:none}
+button{cursor:pointer;user-select:none;touch-action:manipulation}
+.app{display:flex;height:100vh;height:100dvh;width:100vw;background:linear-gradient(180deg,#f1f5f9 0%,#fff 30%)}
+.sidebar{width:320px;min-width:320px;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);display:flex;flex-direction:column;z-index:1000;box-shadow:0 0 0 1px rgba(0,0,0,.05),0 10px 30px -10px rgba(2,6,23,.3);transition:transform .32s cubic-bezier(.2,.8,.2,1),height .32s}
+.sidebar.hide{transform:translateX(-105%)}
+@media(max-width:768px){.sidebar{position:absolute;left:0;right:0;bottom:0;top:auto;width:auto;min-width:0;height:68vh;max-height:calc(100dvh - 8px);border-radius:22px 22px 0 0;box-shadow:0 -10px 40px -10px rgba(0,0,0,.35),0 0 0 1px rgba(0,0,0,.05)} .sidebar.hide{transform:translateY(115%)} .sidebar.expanded{height:calc(96dvh - env(safe-area-inset-top))}}
+.head{background:linear-gradient(135deg,var(--pri) 0%,#3b5bdb 50%,var(--pri2) 100%);color:#fff;padding:12px 12px 14px;padding-top:calc(12px + env(safe-area-inset-top));flex-shrink:0;position:relative;overflow:hidden}
+.head::after{content:"";position:absolute;inset:0;background:radial-gradient(800px 200px at -10% -50%,rgba(255,255,255,.25),transparent),radial-gradient(600px 180px at 110% -40%,rgba(255,255,255,.18),transparent);pointer-events:none}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.top h1{font-size:15px;font-weight:800;letter-spacing:.3px;display:flex;align-items:center;gap:6px;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+.tg{width:34px;height:34px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:10px;color:#fff;font-size:18px;backdrop-filter:blur(8px);transition:all .2s}
+.tg:active{transform:scale(.94);background:rgba(255,255,255,.28)}
+.btns{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.btns button{height:38px;background:#fff;color:#1e3a8a;border:none;border-radius:12px;font-size:12px;font-weight:700;box-shadow:0 2px 0 rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.08);transition:transform .15s,box-shadow .15s,background .15s}
+.btns button:active{transform:translateY(1px) scale(.98);box-shadow:0 1px 0 rgba(0,0,0,.06)}
+.form{flex:1;overflow-y:auto;padding:12px;background:linear-gradient(180deg,#f9fafb 0%,#ffffff 100%);-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.f{margin-bottom:12px}
+.f label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:#334155;letter-spacing:.2px}
+.f input,.f select,.f textarea{width:100%;padding:10px 11px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:15px;height:42px;background:#fff;transition:border .15s,box-shadow .15s;box-shadow:0 1px 1px rgba(0,0,0,.02) inset}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--pri2);box-shadow:0 0 0 4px var(--ring)}
+.f textarea{height:56px;resize:vertical}
+.r{display:flex;gap:12px;flex-wrap:wrap}
+.r label{display:flex;align-items:center;gap:6px;font-size:13px;padding:3px 2px;font-weight:600;color:#475569}
+.r input{width:18px;height:18px;accent-color:var(--pri2)}
+.chk{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.chk label{font-size:13px;display:flex;align-items:center;gap:7px;padding:9px 10px;background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;cursor:pointer;transition:all .15s;font-weight:600;color:#334155}
+.chk label:has(input:checked){background:#eff6ff;border-color:#3b82f6;color:#1e40af;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.chk input{width:17px;height:17px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mapw{flex:1;position:relative;background:#cbd5e1;overflow:hidden}
+#map{width:100%;height:100%;background:#e2e8f0}
+.tools{position:absolute;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:1100;background:rgba(255,255,255,.92);backdrop-filter:blur(14px) saturate(1.2);padding:7px;border-radius:18px;box-shadow:0 10px 30px -10px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.06);display:flex;gap:5px;max-width:calc(100% - 20px);overflow-x:auto;transition:bottom .25s;scrollbar-width:none}
+.tools::-webkit-scrollbar{display:none}
+.tools button{height:54px;min-width:64px;padding:5px 9px;background:#fff;border:1.5px solid #e5e7eb;border-radius:13px;font-size:11px;font-weight:700;color:#334155;position:relative;transition:all .18s;box-shadow:0 2px 4px rgba(0,0,0,.05)}
+.tools button.on{background:linear-gradient(180deg,var(--pri2),#1d4ed8);color:#fff;border-color:#1d4ed8;box-shadow:0 6px 16px -4px rgba(37,99,235,.5);transform:translateY(-1px)}
+.tools button:active{transform:scale(.97)}
+.tools button[data-t="bldf"].ready::after{content:"✓";position:absolute;top:-5px;right:-5px;background:#dc2626;color:#fff;width:19px;height:19px;border-radius:10px;font-size:11px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(220,38,38,.5);animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.hint{position:absolute;top:calc(14px + env(safe-area-inset-top));left:50%;transform:translateX(-50%) translateY(-8px);background:rgba(15,23,42,.92);color:#fff;padding:10px 16px;border-radius:20px;font-size:12px;z-index:1000;pointer-events:none;opacity:0;transition:all .25s;max-width:90%;text-align:center;backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.hint.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.fab{position:absolute;bottom:calc(96px + env(safe-area-inset-bottom));right:16px;width:58px;height:58px;border-radius:29px;background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff;border:none;font-size:24px;z-index:1002;display:none;box-shadow:0 10px 24px -8px rgba(37,99,235,.6),0 4px 10px rgba(0,0,0,.2);align-items:center;justify-content:center;transition:transform .2s}
+.fab:active{transform:scale(.94)}
+.sidebar.hide ~ .mapw .fab{display:flex}
+@media(max-width:768px){.fab{display:flex}}
+.marker-pole{width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid #0f172a;box-shadow:0 3px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#0f172a}
+.marker-trans{width:30px;height:30px;border-radius:50%;background:#fff;border:3px solid #dc2626;box-shadow:0 3px 10px rgba(220,38,38,.35);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#dc2626}
+.marker-label{background:#fff;border:2px solid #0f172a;padding:4px 7px;font-size:11px;font-weight:800;white-space:nowrap;border-radius:8px;box-shadow:0 4px 10px rgba(0,0,0,.22);transform:translate(-50%,-140%);cursor:pointer}
+.marker-label.red{border-color:#dc2626;color:#dc2626;background:#fff5f5}
+.text-lab{background:#fff;border:2px solid #1f2937;padding:5px 9px;font-size:12px;font-weight:700;white-space:nowrap;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.18);cursor:pointer}
+.modal{position:fixed;inset:0;background:rgba(2,6,23,.6);backdrop-filter:blur(6px);z-index:5000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal.show{display:flex;animation:fade .2s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal-box{background:#fff;width:100%;max-width:440px;border-radius:20px;padding:22px;box-shadow:0 20px 60px -15px rgba(0,0,0,.4);animation:pop .22s cubic-bezier(.2,.8,.2,1)}
+@keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+.modal h3{font-size:17px;margin-bottom:14px;font-weight:800;color:#0f172a}
+.modal .row{margin-bottom:12px}
+.modal label{font-size:13px;color:#475569;display:block;margin-bottom:5px;font-weight:700}
+.modal input,.modal select{width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:12px;font-size:16px;transition:all .15s}
+.modal input:focus,.modal select:focus{border-color:var(--pri2);box-shadow:0 0 0 4px var(--ring)}
+.modal-btns{display:flex;gap:10px;margin-top:18px}
+.modal-btns button{flex:1;height:48px;border:none;border-radius:12px;font-size:15px;font-weight:700;transition:transform .15s}
+.modal-ok{background:linear-gradient(180deg,var(--pri2),#1d4ed8);color:#fff;box-shadow:0 8px 20px -6px rgba(37,99,235,.6)}
+.modal-ok:active{transform:scale(.98)}
+.modal-cancel{background:#f1f5f9;color:#334155}
+.modal-cancel:active{transform:scale(.98)}
+.leaflet-control-zoom a{border-radius:10px!important}
 </style>
 </head>
-
 <body>
-
-<div class="container">
-
-<h2>📄 型番爆速検索</h2>
-
-<a class="btn lens" href="https://lens.google.com/" target="_blank">
-📷 Googleレンズ
-</a>
-
-<input id="modelInput" placeholder="型番を入力 or ペースト">
-
-<button class="btn manual" onclick="pasteAndSearch()">📋 貼り付け検索</button>
-<button class="btn manual" onclick="searchNow('取扱説明書')">📖 取説</button>
-<button class="btn spec" onclick="searchNow('仕様書')">📑 仕様書</button>
-
+<div class="app">
+  <div class="sidebar" id="sb">
+    <div class="head">
+      <div class="top"><h1>⚡ 電力申請 v40</h1><button class="tg" id="tg" type="button">▼</button></div>
+      <div class="btns">
+        <button id="gps" type="button">📍 GPS</button>
+        <button id="save" type="button">💾 保存</button>
+        <button id="load" type="button">📂 読込</button>
+        <button id="undo" type="button">↩️ 戻る</button>
+        <button id="clear" type="button">🗑️ 全消</button>
+        <button id="share" type="button">📤 共有</button>
+      </div>
+    <div class="form">
+      <div class="f"><label>現場名</label><input id="genba" placeholder="〇〇邸"></div>
+      <div class="f"><label>住所</label><input id="jusho" placeholder="宮城県名取市..."></div>
+      <div class="f"><label>工事種別</label><div class="r"><label><input type="radio" name="k" value="本設" checked>本設</label><label><input type="radio" name="k" value="仮設">仮設</label></div></div>
+      <div class="f"><label>供給方式</label><select id="kyokyu"><option>単相2線式 100V</option><option selected>単相3線式 100V/200V</option><option>三相3線式 200V</option></select></div>
+      <div class="grid2">
+        <div class="f"><label>契約種別</label><select id="keiyaku"><option>従量電灯B</option><option>従量電灯C</option><option>低圧電力</option></select></div>
+        <div class="f"><label>契約容量</label><select id="amp"><option value="">選択</option><option>15A</option><option>20A</option><option>30A</option><option>40A</option><option>50A</option><option>60A</option><option>6kVA</option><option>8kVA</option><option>10kVA</option><option>12kVA</option><option>15kVA</option></select></div>
+      </div>
+      <div class="f"><label>引込線</label><div class="grid2"><select id="dv"><option>DV2線</option><option selected>DV3線</option></select><select id="sz"><option>3.2mm</option><option>14mm²</option><option>22mm²</option><option>38mm²</option><option>60mm²</option></select></div></div>
+      <div class="grid2">
+        <div class="f"><label>引込柱番号</label><input id="hikikomi_basho" placeholder="名取12"></div>
+        <div class="f"><label>トランス柱番号</label><input id="trans_basho" placeholder="名取15"></div>
+      </div>
+      <div class="grid2">
+        <div class="f"><label>トランス1</label><select id="trans_cap1"><option value="">-</option><option>5kVA</option><option>10kVA</option><option>15kVA</option><option>20kVA</option><option>25kVA</option><option>30kVA</option><option>40kVA</option><option>50kVA</option><option>60kVA</option><option>75kVA</option></select></div>
+        <div class="f"><label>トランス2</label><select id="trans_cap2"><option value="">-</option><option>5kVA</option><option>10kVA</option><option>15kVA</option><option>20kVA</option><option>25kVA</option><option>30kVA</option><option>40kVA</option><option>50kVA</option><option>60kVA</option><option>75kVA</option></select></div>
+      </div>
+      <div class="f"><label>区分</label><div class="r"><label><input type="checkbox" id="h1">二類</label><label><input type="checkbox" id="h2">三類</label><label><input type="checkbox" id="h3">空中分岐</label></div></div>
+      <div class="f"><label>メーター</label><div class="r"><label><input type="radio" name="m" value="ベージュ" checked>ベージュ</label><label><input type="radio" name="m" value="グレー">グレー</label><label><input type="radio" name="m" value="なし">なし</label></div></div>
+      <div class="f"><label>設備</label><div class="chk"><label><input type="checkbox" id="e1">☀️ 太陽光</label><label><input type="checkbox" id="e2">♨️ エコキュート</label><label><input type="checkbox" id="e3">🍳 IH</label><label><input type="checkbox" id="e4">🚗 EV充電</label><label><input type="checkbox" id="e5">🔋 蓄電池</label><label><input type="checkbox" id="e6">🏠 オール電化</label></div></div>
+      <div class="grid2"><div class="f"><label>受点予定</label><input id="juten" type="date"></div><div class="f"><label>検査日</label><input id="kensa" type="date"></div></div>
+      <div class="f"><label>備考</label><textarea id="biko" rows="2"></textarea></div>
+    </div>
+  </div>
+  <div class="mapw">
+    <div id="map"></div>
+    <button class="fab" id="fab" type="button">☰</button>
+    <div class="tools" id="tools">
+      <button data-t="pole" type="button">⚫<br>電柱</button>
+      <button data-t="trans" type="button">🔴<br>トランス</button>
+      <button data-t="line" type="button">〰️<br>低圧</button>
+      <button data-t="hikikomi" type="button">↘️<br>引込</button>
+      <button data-t="bunki" type="button">🔀<br>分岐</button>
+      <button data-t="bld" type="button">⬜<br>建物</button>
+      <button data-t="bldf" type="button">⬡<br>自由</button>
+      <button data-t="text" type="button">📝<br>文字</button>
+      <button data-t="edit" type="button">✏️<br>編集</button>
+    </div>
+    <div class="hint" id="hint">ツール選択→地図タップ</div>
+  </div>
 </div>
-
+<div class="modal" id="modal"><div class="modal-box"><h3 id="mtitle">入力</h3><div id="mbody"></div><div class="modal-btns"><button class="modal-cancel" id="mcancel" type="button">キャンセル</button><button class="modal-ok" id="mok" type="button">OK</button></div></div></div>
 <script>
-
-// 🔥 クリップボード → 即検索（ユーザー操作トリガー）
-async function pasteAndSearch(){
-  try{
-    const text = await navigator.clipboard.readText();
-
-    if(!text){
-      alert("コピーされてません");
-      return;
+!function(){
+  const $=id=>document.getElementById(id);
+  const hint=$('hint'), modal=$('modal'), mbody=$('mbody');
+  let mResolve=null;
+  const geoCache = (()=>{try{return JSON.parse(localStorage.getItem('geoCache')||'{}')}catch(e){return {}}})();
+  const saveGeoCache = ()=>{try{localStorage.setItem('geoCache', JSON.stringify(geoCache))}catch(e){}};
+  
+  function showModal(title,html){$('mtitle').textContent=title;mbody.innerHTML=html;modal.classList.add('show');return new Promise(r=>{mResolve=r})}
+  $('mok').onclick=()=>{if(mResolve){const data={};mbody.querySelectorAll('input,select,textarea').forEach(el=>{if(el.type==='radio'){if(el.checked)data[el.name]=el.value;return}const key=el.id||el.name;if(!key)return;data[key]=el.value});mResolve(data)}modal.classList.remove('show');mResolve=null};
+  $('mcancel').onclick=()=>{modal.classList.remove('show');if(mResolve)mResolve(null);mResolve=null};
+  
+  const show=t=>{hint.textContent=t;hint.classList.add('show');clearTimeout(show._t);show._t=setTimeout(()=>hint.classList.remove('show'),1800)};
+  const vib=p=>{try{if(navigator.vibrate)navigator.vibrate(p||10)}catch(e){}};
+  const getR=n=>document.querySelector(`input[name="${n}"]:checked`)?.value||'';
+  const setR=(n,v)=>{document.querySelectorAll(`input[name="${n}"]`).forEach(e=>e.checked=false);if(v){const e=document.querySelector(`input[name="${n}"][value="${v}"]`);if(e)e.checked=true}};
+  
+  const map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([38.172,140.882],18);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:21,attribution:'©OSM'}).addTo(map);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  const layerGroup=L.layerGroup().addTo(map);
+  
+  if(window.ResizeObserver){new ResizeObserver(()=>map.invalidateSize()).observe(document.getElementById('map'))}
+  
+  const state={tool:null,objs:[],undo:[],tmp:[],last:0};
+  const sb=$('sb');
+  
+  function toggleSidebar(){
+    const isMobile = window.innerWidth <= 768;
+    if(!isMobile){
+      sb.classList.toggle('hide');
+    }else{
+      sb.classList.add('hide');
+      sb.classList.remove('expanded');
     }
-
-    const clean = text.trim();
-
-    document.getElementById("modelInput").value = clean;
-
-    autoSearch(clean);
-
-  }catch(e){
-    alert("iPhoneは長押し→ペーストしてください");
+    $('tg').textContent='▼';
+    setTimeout(()=>map.invalidateSize(),300);
+    show('地図全画面');
   }
-}
-
-
-// 🔍 自動検索
-function autoSearch(keyword){
-  if(!keyword) return;
-
-  const q = encodeURIComponent(
-    `${keyword} ("仕様書" OR "取扱説明書") filetype:pdf -amazon -楽天`
-  );
-
-  location.href = `https://www.google.com/search?q=${q}`;
-}
-
-
-// 🔍 手動検索
-function searchNow(type){
-  const keyword = document.getElementById("modelInput").value.trim();
-
-  if(!keyword){
-    alert("型番を入力してください");
-    return;
-  }
-
-  const q = encodeURIComponent(
-    `${keyword} "${type}" filetype:pdf -amazon -楽天`
-  );
-
-  location.href = `https://www.google.com/search?q=${q}`;
-}
-
+  $('tg').onclick = toggleSidebar;
+  $('fab').onclick = ()=>{
+    sb.classList.remove('hide');
+    sb.classList.remove('expanded');
+    setTimeout(()=>map.invalidateSize(),260);
+  };
+  
+  let startY=0;
+  const head = document.querySelector('.head');
+  head.addEventListener('touchstart',e=>{startY=e.touches[0].clientY},{passive:true});
+  head.addEventListener('touchend',e=>{if(sb.classList.contains('hide'))return; const dy=startY-e.changedTouches[0].clientY;if(Math.abs(dy)>40){if(dy>0){sb.classList.add('expanded')}else{sb.classList.remove('expanded')}} setTimeout(()=>map.invalidateSize(),260);});
+  
+  map.on('click',()=>{ if(window.innerWidth<=768 && !sb.classList.contains('hide') && !state.tool){ setTimeout(()=>{ sb.classList.add('hide'); }, 200); } });
+  
+  function pushHistory(){ if(state.objs.length>200){ if(state.undo.length>10) state.undo.shift(); return; } const snap = JSON.stringify(state.objs.map(o=>({t:o.t,d:o.d,id:o.id}))); if(state.undo[state.undo.length-1] !== snap){ state.undo.push(snap); if(state.undo.length>30) state.undo.shift(); } }
+  function add(t,d){pushHistory();const o={t,id:'o'+Date.now().toString(36)+Math.random().toString(36).slice(2),d:JSON.parse(JSON.stringify(d))};state.objs.push(o);render(o);requestSave();vib(10);return o}
+  function render(o){ const d=o.d; if(!o._group){o._group=L.layerGroup();layerGroup.addLayer(o._group)}else{o._group.clearLayers()} if(o.t==='pole'){ const m=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:`<div class="marker-pole">${(d.no||'').slice(-2)}</div>`,iconSize:[28,28],iconAnchor:[14,14]})}); m.on('click',()=>editObj(o));o._group.addLayer(m); if(d.no){const l=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:`<div class="marker-label">${d.no}</div>`}),interactive:true});l.on('click',()=>editObj(o));o._group.addLayer(l)} }else if(o.t==='trans'){ const cap=d.cap?d.cap.replace('kVA',''):'';const m=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:`<div class="marker-trans">${cap}</div>`,iconSize:[30,30],iconAnchor:[15,15]})});m.on('click',()=>editObj(o));o._group.addLayer(m); const label=[d.no,d.cap].filter(Boolean).join(' ');if(label){const l=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:`<div class="marker-label red">${label}</div>`}),interactive:true});l.on('click',()=>editObj(o));o._group.addLayer(l)} }else if(o.t==='line'||o.t==='hikikomi'||o.t==='bunki'){ const opt={color:o.t==='line'?'#0f172a':'#dc2626',weight:4,opacity:0.95};if(o.t==='bunki')opt.dashArray='6,8'; const pl=L.polyline([[d.p1.lat,d.p1.lng],[d.p2.lat,d.p2.lng]],opt);pl.on('click',()=>editLength(o));o._group.addLayer(pl); const dist=d.dist||map.distance(d.p1,d.p2).toFixed(1);const mid=[(d.p1.lat+d.p2.lat)/2,(d.p1.lng+d.p2.lng)/2]; const lm=L.marker(mid,{icon:L.divIcon({className:'',html:`<div class="marker-label red">${dist}m</div>`}),interactive:true});lm.on('click',()=>editLength(o));o._group.addLayer(lm); }else if(o.t==='bld'||o.t==='bldf'){ o._group.addLayer(L.polygon(d.ps.map(p=>[p.lat,p.lng]),{color:o.t==='bldf'?'#2563eb':'#dc2626',weight:3,fillOpacity:0.14})); }else if(o.t==='text'){ const tm=L.marker([d.lat,d.lng],{icon:L.divIcon({className:'',html:`<div class="text-lab">${d.text}</div>`}),interactive:true});tm.on('click',()=>editText(o));o._group.addLayer(tm); } }
+  
+  async function editObj(o){if(state.tool!=='edit')return;pushHistory();if(o.t==='pole'){const r=await showModal('電柱編集',`<div class="row"><label>柱番号</label><input id="no" name="no" value="${o.d.no||''}"></div>`);if(r){o.d.no=r.no;render(o);requestSave()}}else if(o.t==='trans'){const caps=['','5kVA','10kVA','15kVA','20kVA','25kVA','30kVA','40kVA','50kVA','60kVA','75kVA'];const r=await showModal('トランス編集',`<div class="row"><label>柱番号</label><input id="no" name="no" value="${o.d.no||''}"></div><div class="row"><label>容量</label><select id="cap" name="cap">${caps.map(v=>`<option ${o.d.cap===v?'selected':''}>${v}</option>`).join('')}</select></div>`);if(r){o.d.no=r.no;o.d.cap=r.cap;render(o);requestSave()}}}
+  async function editLength(o){if(state.tool!=='edit')return;pushHistory();const cur=o.d.dist||map.distance(o.d.p1,o.d.p2).toFixed(1);const r=await showModal('長さ修正',`<div class="row"><label>m</label><input id="dist" name="dist" type="number" step="0.1" value="${cur}"></div>`);if(r&&r.dist){o.d.dist=parseFloat(r.dist).toFixed(1);render(o);requestSave()}}
+  async function editText(o){if(state.tool!=='edit')return;pushHistory();const r=await showModal('文字修正',`<div class="row"><label>文字</label><input id="text" name="text" value="${o.d.text}"></div>`);if(r&&r.text){o.d.text=r.text;render(o);requestSave()}}
+  
+  function clearAll(){layerGroup.clearLayers();state.objs.forEach(o=>o._group=null);state.objs=[]}
+  
+  map.on('click',async e=>{if(!state.tool||state.tool==='edit')return;const now=Date.now();if(now-state.last<140)return;state.last=now;const ll=e.latlng;
+    if(state.tool==='pole'){const r=await showModal('電柱','<div class="row"><label>柱番号</label><input id="no" name="no" value="'+($('hikikomi_basho').value||'')+'"></div>');if(!r)return;add('pole',{lat:ll.lat,lng:ll.lng,no:r.no})}
+    else if(state.tool==='trans'){const caps=['','5kVA','10kVA','15kVA','20kVA','25kVA','30kVA','40kVA','50kVA','60kVA','75kVA'];const r=await showModal('トランス','<div class="row"><label>柱番号</label><input id="no" name="no" value="'+($('trans_basho').value||'')+'"></div><div class="row"><label>容量</label><select id="cap" name="cap">'+caps.map(v=>'<option>'+v+'</option>').join('')+'</select></div>');if(!r)return;add('trans',{lat:ll.lat,lng:ll.lng,no:r.no,cap:r.cap})}
+    else if(state.tool==='line'){state.tmp.push(ll);if(state.tmp.length===2){add('line',{p1:state.tmp[0],p2:state.tmp[1]});state.tmp=[]}else show('終点タップ')}
+    else if(state.tool==='hikikomi'){state.tmp.push(ll);if(state.tmp.length===2){const d=map.distance(state.tmp[0],state.tmp[1]).toFixed(1);add('hikikomi',{p1:state.tmp[0],p2:state.tmp[1],dist:d});state.tmp=[]}else show('終点タップ')}
+    else if(state.tool==='bunki'){state.tmp.push(ll);if(state.tmp.length===2){add('bunki',{p1:state.tmp[0],p2:state.tmp[1]});state.tmp=[]}else show('終点タップ')}
+    else if(state.tool==='bld'){state.tmp.push(ll);if(state.tmp.length===2){const a=state.tmp[0],b=state.tmp[1];add('bld',{ps:[{lat:a.lat,lng:a.lng},{lat:a.lat,lng:b.lng},{lat:b.lat,lng:b.lng},{lat:b.lat,lng:a.lng}]});state.tmp=[]}else show('対角をタップ')}
+    else if(state.tool==='bldf'){state.tmp.push(ll);show(state.tmp.length+'点');const btn=document.querySelector('[data-t="bldf"]');if(state.tmp.length>=3)btn.classList.add('ready')}
+    else if(state.tool==='text'){const r=await showModal('文字','<div class="row"><label>文字</label><input id="text" name="text"></div>');if(r&&r.text)add('text',{lat:ll.lat,lng:ll.lng,text:r.text})}
+  });
+  
+  document.querySelectorAll('#tools button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.t==='bldf'&&state.tool==='bldf'&&state.tmp.length>=3){add('bldf',{ps:state.tmp.map(p=>({lat:p.lat,lng:p.lng}))});state.tmp=[];b.classList.remove('ready');return}state.tool=b.dataset.t;if(b.dataset.t!=='bldf')state.tmp=[];document.querySelectorAll('#tools button').forEach(x=>x.classList.remove('on'));b.classList.add('on'); if(window.innerWidth<=768){ sb.classList.add('hide'); setTimeout(()=>map.invalidateSize(),260); } show(b.textContent.replace(/\n/,' ')+' モード');
+  }));
+  
+  $('gps').onclick=async()=>{try{const p=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:15000}));const lat=p.coords.latitude,lng=p.coords.longitude;map.setView([lat,lng],19);const key=lat.toFixed(5)+','+lng.toFixed(5);if(geoCache[key]){$('jusho').value=geoCache[key];return}const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=ja`);const d=await r.json();let addr='';if(d?.address){const a=d.address;addr=[a.state,a.city||a.town,a.suburb||'',a.road||''].filter(Boolean).join(' ')}if(!addr)addr=`${lat.toFixed(5)},${lng.toFixed(5)}`;geoCache[key]=addr;saveGeoCache();$('jusho').value=addr;show('GPS取得')}catch(e){show('GPS失敗')}};
+  
+  let saveTimer=null;
+  function doSave(){try{const c=map.getCenter();const d={v:'40',f:{genba:$('genba').value,jusho:$('jusho').value,koji:getR('k'),kyokyu:$('kyokyu').value,keiyaku:$('keiyaku').value,amp:$('amp').value,dv:$('dv').value,sz:$('sz').value,hikikomi_basho:$('hikikomi_basho').value,trans_basho:$('trans_basho').value,trans_cap1:$('trans_cap1').value,trans_cap2:$('trans_cap2').value,mbox:getR('m'),hk:['h1','h2','h3'].filter(id=>$(id).checked),eq:['e1','e2','e3','e4','e5','e6'].filter(id=>$(id).checked),juten:$('juten').value,kensa:$('kensa').value,biko:$('biko').value},o:state.objs.map(o=>({t:o.t,d:o.d,id:o.id})),c:{lat:c.lat,lng:c.lng},z:map.getZoom()};localStorage.setItem('dq40',JSON.stringify(d))}catch(e){}}
+  function requestSave(){clearTimeout(saveTimer);saveTimer=setTimeout(doSave,800)}
+  
+  function load(){try{const s=localStorage.getItem('dq40')||localStorage.getItem('dq39');if(!s)return;const d=JSON.parse(s),f=d.f||{};Object.entries({genba:f.genba,jusho:f.jusho,kyokyu:f.kyokyu,keiyaku:f.keiyaku,amp:f.amp,dv:f.dv,sz:f.sz,hikikomi_basho:f.hikikomi_basho,trans_basho:f.trans_basho,trans_cap1:f.trans_cap1,trans_cap2:f.trans_cap2,juten:f.juten,kensa:f.kensa,biko:f.biko}).forEach(([k,v])=>{if($(k))$(k).value=v||''});setR('k',f.koji);setR('m',f.mbox);['h1','h2','h3','e1','e2','e3','e4','e5','e6'].forEach(id=>{if($(id))$(id).checked=(f.hk||f.eq||[]).includes(id)});if(d.c)map.setView([d.c.lat,d.c.lng],d.z);clearAll();(d.o||[]).forEach(o=>{const no={t:o.t,d:o.d,id:o.id};state.objs.push(no);render(no)});pushHistory();show('読込完了')}catch(e){}}
+  
+  $('save').onclick=()=>{doSave();show('保存しました')};
+  $('load').onclick=load;
+  $('undo').onclick=()=>{if(state.undo.length<2)return;state.undo.pop();const prev=JSON.parse(state.undo[state.undo.length-1]||'[]');clearAll();state.objs=[];prev.forEach(o=>{const no={t:o.t,d:o.d,id:o.id};state.objs.push(no);render(no)});requestSave();show('元に戻しました')};
+  $('clear').onclick=()=>{if(confirm('全削除しますか？')){pushHistory();clearAll();pushHistory();requestSave();show('全削除')}};
+  $('share').onclick=()=>{doSave();show('共有準備完了');if(navigator.share){navigator.share({title:'電力申請',text:$('genba').value||'現場'}).catch(()=>{})}};
+  
+  document.querySelectorAll('input,select,textarea').forEach(e=>e.addEventListener('input',requestSave));
+  setInterval(doSave,60000);
+  window.addEventListener('load',()=>setTimeout(()=>{load();if(window.innerWidth<=768){sb.classList.add('hide')}},400));
+}();
 </script>
-
 </body>
 </html>
