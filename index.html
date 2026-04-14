@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
+<head><script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
 <!-- Playables SDK -->
 <script>// Playables SDK v1.0.0
 // Game lifecycle bridge: rAF-based game-ready detection + event communication
@@ -190,7 +190,9 @@
     originalRAF.call(window, onFrame);
   }
 })();</script>
-<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+<!-- Intl removed -->
+<!-- SDK removed -->
+<script>window.I18n={t:function(s){return s}};</script>
 <meta charset="UTF-8">
 <title>電力申請 v40.9</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
@@ -230,11 +232,16 @@ button,input,select,textarea{font-family:inherit;font-size:16px;outline:none}
 .tools button.on{background:#2563eb;color:#fff;border-color:#2563eb}
 .hint{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;z-index:600;opacity:0;transition:.2s;pointer-events:none}
 .hint.show{opacity:1}
-.fab{position:absolute;top:12px;left:12px;width:40px;height:40px;border-radius:8px;background:#1e3a8a;color:#fff;border:none;font-size:18px;z-index:700;display:none;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.fab{position:absolute;top:12px;right:12px;left:auto;width:40px;height:40px;border-radius:8px;background:#1e3a8a;color:#fff;border:none;font-size:18px;z-index:700;display:none;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 @media(max-width:768px){.fab{display:flex}}
 .sidebar:not(.hidden)~.mapwrap .fab{display:none}
 .openfab{display:none}
 .sidebar.hidden~.mapwrap .openfab{display:flex}
+
+.pole-label{background:transparent;border:none;box-shadow:none;font-size:11px;font-weight:700;color:#000;text-shadow:0 0 2px #fff}
+.leaflet-tooltip-top:before{border-top-color:transparent}
+.leaflet-top.leaflet-right{top:60px;right:10px}
+.leaflet-control-zoom{box-shadow:0 2px 6px rgba(0,0,0,.3)}
 </style>
 </head>
 <body>
@@ -300,80 +307,213 @@ button,input,select,textarea{font-family:inherit;font-size:16px;outline:none}
 <script>
 (function(){
 var boot=document.getElementById('boot');
-setTimeout(function(){boot.className='hide'},400);
+setTimeout(function(){boot.classList.add('hide')},400);
 
 var $=function(id){return document.getElementById(id)};
 var sb=$('sb'), hint=$('hint'), addrstat=$('addrstat');
-function show(t){hint.textContent=t;hint.className='hint show';setTimeout(function(){hint.className='hint'},1800)}
+function show(t){hint.textContent=t;hint.classList.add('show');setTimeout(function(){hint.classList.remove('show')},1800)}
 
-// サイドバー開閉 - 修正
-$('closeBtn').onclick=function(){sb.className='sidebar hidden';setTimeout(function(){map.invalidateSize()},300)};
-$('openBtn').onclick=function(){sb.className='sidebar';setTimeout(function(){map.invalidateSize()},300)};
+// サイドバー
+$('closeBtn').onclick=function(){sb.classList.add('hidden');setTimeout(function(){map.invalidateSize()},300)};
+$('openBtn').onclick=function(){sb.classList.remove('hidden');setTimeout(function(){map.invalidateSize()},300)};
 
-// ラジオチェック見た目
 function upd(){document.querySelectorAll('.r label,.chk label').forEach(function(l){var i=l.querySelector('input');l.className=i&&i.checked?'on':''})}
 document.addEventListener('change',upd);
 
 // 地図
-var map = L.map('map').setView([38.172,140.882],16);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+var map = L.map('map',{doubleClickZoom:false, zoomControl:false}).setView([38.172,140.882],16);
+L.control.zoom({position:'topright'}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'©OSM'}).addTo(map);
 var layer=L.layerGroup().addTo(map);
+var historyStack=[];
+function pushHist(l){historyStack.push(l)}
 setTimeout(function(){map.invalidateSize()},500);
 window.addEventListener('resize',function(){map.invalidateSize()});
 
-var tool=null, tmp=[];
+var tool=null, tmp=[], tempLine=null, polyPoints=[], editMode=false;
+var labelCounter=1;
+
 document.querySelectorAll('.tools button').forEach(function(b){
   b.onclick=function(){
     var t=b.dataset.t;
+    if(tool==='bldf' && polyPoints.length){finishPoly()}
     tool=tool===t?null:t;
-    document.querySelectorAll('.tools button').forEach(function(x){x.className=''});
-    if(tool){b.className='on';show(t)} tmp=[];
+    document.querySelectorAll('.tools button').forEach(function(x){x.classList.remove('on')});
+    if(tool){b.classList.add('on');show(t)} 
+    tmp=[]; 
+    if(tempLine){map.removeLayer(tempLine);tempLine=null}
+    toggleEdit(tool==='edit');
   }
 });
 
+function addToLayer(l){l.addTo(layer);pushHist(l);return l}
+
+function finishPoly(){
+  if(polyPoints.length>=3){
+    addToLayer(L.polygon(polyPoints,{color:'#2563eb',weight:2,fillOpacity:.1}));
+    show('自由建物完了')
+  }
+  polyPoints=[];
+  if(tempLine){map.removeLayer(tempLine);tempLine=null}
+}
+
+function makeEditableLabel(latlng, text, isPole){
+  var id='lbl'+Date.now();
+  var html='<div id="'+id+'" contenteditable="true" style="background:#fff;border:1px solid #000;padding:2px 5px;font-size:12px;min-width:30px;text-align:center;white-space:nowrap;cursor:text">'+text+'</div>';
+  var icon = L.divIcon({html:html,className:'',iconSize:null});
+  var m = L.marker(latlng,{icon:icon,draggable:true});
+  m.isLabel=true;
+  m.poleRef=isPole||null;
+  addToLayer(m);
+  setTimeout(function(){
+    var el=document.getElementById(id);
+    if(el){el.focus();document.execCommand('selectAll',false,null)}
+  },50);
+  return m;
+}
+
 map.on('click',function(e){
-  if(!tool) return;
+  if(!tool || editMode) return;
   var ll=e.latlng;
-  if(tool==='pole'){var n=prompt('柱番号', $('hikikomi_basho').value||''); if(n!==null)L.marker(ll).addTo(layer).bindPopup(n)}
-  else if(tool==='trans'){L.circleMarker(ll,{radius:7,color:'red',fillColor:'#fff',fillOpacity:1,weight:2}).addTo(layer)}
-  else if(tool==='line'||tool==='hikikomi'||tool==='bunki'){tmp.push(ll);if(tmp.length===2){L.polyline(tmp,{color:tool==='line'?'#000':'red',weight:4}).addTo(layer);tmp=[]}}
-  else if(tool==='bld'){tmp.push(ll);if(tmp.length===2){L.rectangle([tmp[0],tmp[1]],{color:'#2563eb',weight:2,fillOpacity:.1}).addTo(layer);tmp=[]}}
-  else if(tool==='text'){var t=prompt('文字');if(t)L.marker(ll,{icon:L.divIcon({html:'<div style="background:#fff;border:1px solid #000;padding:2px 5px;font-size:12px">'+t+'</div>'})}).addTo(layer)}
+  if(tool==='pole'){
+    var n=$('hikikomi_basho').value||('P'+labelCounter++);
+    var m = L.circleMarker(ll,{radius:6,color:'#000',fillColor:'#fff',fillOpacity:1,weight:2});
+    m.bindTooltip(n,{permanent:true,direction:'top',offset:[0,-8],className:'pole-label'});
+    m.poleName=n;
+    addToLayer(m);
+    // ラベルを少しずらして配置（重ならないよう）
+    var labelPos = L.latLng(ll.lat+0.00005, ll.lng);
+    makeEditableLabel(labelPos, n, m);
+    show('電柱:'+n);
+  }
+  else if(tool==='trans'){
+    addToLayer(L.circleMarker(ll,{radius:7,color:'red',fillColor:'#fff',fillOpacity:1,weight:2}));
+  }
+  else if(tool==='line'||tool==='hikikomi'||tool==='bunki'){
+    tmp.push(ll);
+    if(tmp.length===2){
+      var line = L.polyline(tmp,{color:tool==='line'?'#000':'red',weight:4});
+      addToLayer(line);
+      // 引込線の長さ表示
+      if(tool==='hikikomi'){
+        var dist = map.distance(tmp[0],tmp[1]);
+        var mid = L.latLng((tmp[0].lat+tmp[1].lat)/2,(tmp[0].lng+tmp[1].lng)/2);
+        var lenText = dist.toFixed(1)+'m';
+        makeEditableLabel(mid, lenText, null);
+      }
+      tmp=[];
+    }
+  }
+  else if(tool==='bld'){
+    tmp.push(ll);
+    if(tmp.length===2){
+      addToLayer(L.rectangle([tmp[0],tmp[1]],{color:'#2563eb',weight:2,fillOpacity:.1}));
+      tmp=[];
+    }
+  }
+  else if(tool==='bldf'){
+    polyPoints.push(ll);
+    if(tempLine) map.removeLayer(tempLine);
+    tempLine = L.polyline(polyPoints.concat([polyPoints[0]]),{color:'#2563eb',weight:2,dashArray:'4'}).addTo(map);
+  }
+  else if(tool==='text'){
+    makeEditableLabel(ll, 'テキスト', null);
+  }
 });
 
-// GPS住所取得
+map.on('dblclick',function(e){
+  if(tool==='bldf'){finishPoly()}
+});
+
+map.on('mousemove',function(e){
+  if(tool==='bldf' && polyPoints.length){
+    var pts = polyPoints.concat([e.latlng]);
+    if(tempLine) map.removeLayer(tempLine);
+    tempLine = L.polyline(pts,{color:'#2563eb',weight:2,dashArray:'4'}).addTo(map);
+  }
+});
+
+function toggleEdit(on){
+  editMode=on;
+  layer.eachLayer(function(l){
+    if(l.dragging){
+      on ? l.dragging.enable() : l.dragging.disable();
+    }
+    // 編集モードでは削除しない、移動のみ
+    l.off('click');
+    if(on && l.isLabel){
+      l.on('click',function(ev){ev.originalEvent.stopPropagation()});
+    }
+  });
+  map.getContainer().style.cursor = on ? 'move' : '';
+  if(on) show('編集:ドラッグで移動');
+}
+
+// GPS - 強化版
 $('gps').onclick=function(){
-  if(!navigator.geolocation){alert('GPS不可');return}
-  addrstat.textContent='取得中';show('GPS...');
-  navigator.geolocation.getCurrentPosition(async function(p){
-    var lat=p.coords.latitude,lng=p.coords.longitude;
-    map.setView([lat,lng],18);
-    L.marker([lat,lng]).addTo(layer).bindPopup('現在地').openPopup();
-    $('jusho').value=lat.toFixed(5)+','+lng.toFixed(5);
-    try{
-      const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=ja`);
-      const d=await r.json();
-      if(d.address){
-        const a=d.address;
-        let addr=(a.state||'')+(a.city||a.town||a.village||'')+(a.suburb||a.quarter||a.neighbourhood||'')+(a.road||'')+(a.house_number||'');
-        if(addr.length>4){$('jusho').value=addr;addrstat.textContent='✓';show(addr)}
-        else{addrstat.textContent='市'}
-      }
-    }catch(e){addrstat.textContent=''}
-  },function(){show('GPS失敗')},{enableHighAccuracy:true,timeout:12000});
+  if(!navigator.geolocation){show('GPS非対応');addrstat.textContent='×';return}
+  if(!window.isSecureContext){show('HTTPSで開いてください');addrstat.textContent='×';return}
+  
+  addrstat.textContent='取得中';show('GPS取得中...');
+  
+  // 権限チェック
+  if(navigator.permissions){
+    navigator.permissions.query({name:'geolocation'}).then(function(res){
+      if(res.state==='denied'){show('位置情報が拒否されています');addrstat.textContent='×'}
+    });
+  }
+  
+  var opts={enableHighAccuracy:true,timeout:25000,maximumAge:0};
+  
+  navigator.geolocation.getCurrentPosition(function(p){
+    var lat=p.coords.latitude,lng=p.coords.longitude,acc=Math.round(p.coords.accuracy);
+    map.setView([lat,lng],19);
+    var m = L.marker([lat,lng]).bindPopup('現在地 ±'+acc+'m').addTo(layer);
+    pushHist(m);
+    m.openPopup();
+    $('jusho').value=lat.toFixed(6)+','+lng.toFixed(6);
+    addrstat.textContent='✓'+acc+'m';
+    show('GPS成功 ±'+acc+'m');
+    
+    // 住所逆ジオ
+    fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&zoom=18&accept-language=ja')
+      .then(r=>r.json())
+      .then(d=>{if(d.display_name){$('jusho').value=d.display_name}})
+      .catch(()=>{});
+      
+  },function(err){
+    var msg='';
+    if(err.code===1)msg='権限を許可してください';
+    else if(err.code===2)msg='電波弱い・屋内';
+    else if(err.code===3)msg='タイムアウト';
+    else msg=err.message;
+    show('GPS失敗:'+msg);addrstat.textContent='×';
+    
+    // フォールバック: IP位置
+    fetch('https://ipapi.co/json/')
+      .then(r=>r.json())
+      .then(d=>{
+        if(d.latitude){
+          map.setView([d.latitude,d.longitude],14);
+          show('IP概算位置を表示');
+          $('jusho').value=(d.city||'')+(d.region||'');
+        }
+      }).catch(()=>{});
+      
+  },opts);
 };
 
 // 保存読込
 function getR(n){var e=document.querySelector('input[name="'+n+'"]:checked');return e?e.value:''}
 function setR(n,v){document.querySelectorAll('input[name="'+n+'"]').forEach(function(e){e.checked=e.value===v});upd()}
-$('save').onclick=function(){try{var d={genba:$('genba').value,jusho:$('jusho').value,koji:getR('k'),kyokyu:$('kyokyu').value,keiyaku:$('keiyaku').value,amp:$('amp').value};localStorage.setItem('dq',JSON.stringify(d));show('保存')}catch(e){}};
-$('load').onclick=function(){try{var d=JSON.parse(localStorage.getItem('dq')||'{}');$('genba').value=d.genba||'';$('jusho').value=d.jusho||'';if(d.koji)setR('k',d.koji);$('kyokyu').value=d.kyokyu||'';$('keiyaku').value=d.keiyaku||'';$('amp').value=d.amp||'';upd();show('読込')}catch(e){}};
-$('clear').onclick=function(){if(confirm('消去?')){layer.clearLayers();show('クリア')}};
-$('undo').onclick=function(){show('未実装')};
-$('share').onclick=function(){if(navigator.share){navigator.share({title:$('genba').value,text:$('jusho').value})}};
+$('save').onclick=function(){try{var d={genba:$('genba').value,jusho:$('jusho').value,koji:getR('k'),kyokyu:$('kyokyu').value,keiyaku:$('keiyaku').value,amp:$('amp').value};localStorage.setItem('dq',JSON.stringify(d));show('保存')}catch(e){show('保存失敗')}};
+$('load').onclick=function(){try{var d=JSON.parse(localStorage.getItem('dq')||'{}');$('genba').value=d.genba||'';$('jusho').value=d.jusho||'';if(d.koji)setR('k',d.koji);$('kyokyu').value=d.kyokyu||'';$('keiyaku').value=d.keiyaku||'';$('amp').value=d.amp||'';upd();show('読込')}catch(e){show('読込失敗')}};
+$('clear').onclick=function(){layer.clearLayers();historyStack=[];show('クリア')};
+$('undo').onclick=function(){var l=historyStack.pop();if(l){layer.removeLayer(l);show('戻す')}else{show('履歴なし')}};
+$('share').onclick=function(){if(navigator.share){navigator.share({title:$('genba').value||'電力申請',text:$('jusho').value||''})}else{show('共有不可')}};
 
 upd();
-show('フォーム表示OK - 左✕で地図拡大');
+show('準備OK');
 })();
 </script>
 </body>
